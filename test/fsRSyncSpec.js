@@ -1,9 +1,9 @@
 define([
   'chai',
   'fs-rsync',
-  'browserfs'
-  // 'fs-rcon'
-], function (chai, rsync, BROWSERFS/*, FSRCON*/) {
+  'browserfs',
+  'fs-rcon'
+], function (chai, rsync, BROWSERFS, FSRCON) {
 
   var assert = chai.assert;
 
@@ -13,7 +13,7 @@ define([
       assert.isFunction(rsync);
       assert.isFunction(rsync.sync);
       assert.isFunction(BROWSERFS);
-      // assert.isFunction(FSRCON);
+      assert.isFunction(FSRCON);
       assert.isFunction(require('fs-rsync'));
     });
 
@@ -21,7 +21,7 @@ define([
 
       var browserfs = new BROWSERFS(),
         filename = '/',
-        fsrcon = null, // new FSRCON(),
+        fsrcon = new FSRCON(),
         fnEnd;
         
       fnEnd = function (err) {
