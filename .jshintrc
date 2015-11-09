@@ -1,0 +1,31 @@
+{
+  "curly": true,
+  "eqeqeq": true,
+  "undef": true,
+  "unused": true,
+  "quotmark": true,
+  "strict": false,
+  "camelcase": true,
+  "indent": 2,
+  "latedef": true,
+  "laxcomma": true,
+  "globals": {
+    "jQuery": true,
+    "define": false,
+    "require": false,
+    "chai": false,
+    "mocha": true,
+    "module": true,
+    "window": true,
+    "$": true,
+    /* MOCHA */
+    "describe"   : false,
+    "it"         : false,
+    "xit"        : false,
+    "console"    : false,
+    "before"     : false,
+    "beforeEach" : false,
+    "after"      : false,
+    "afterEach"  : false
+  }
+}
