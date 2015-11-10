@@ -2,38 +2,63 @@ define([
   'chai',
   'fs-rsync',
   'browserfs',
+  // 'cryptojs'
   'fs-rcon'
-], function (chai, rsync, BROWSERFS, FSRCON) {
+], function (chai, rsync, BROWSERFS/*, CryptoJS*/, FSRCON) {
 
   var assert = chai.assert;
 
   describe('fs-rsync', function () {
 
-    it('should initialize', function () {
+    var fsrcon;
+
+    before(function (done) {
+      fsrcon = new FSRCON();
+      fsrcon.init({port: 3000}, done);
+    });
+
+
+    it('should have loaded', function () {
       assert.isFunction(rsync);
-      assert.isFunction(rsync.sync);
       assert.isFunction(BROWSERFS);
       assert.isFunction(FSRCON);
       assert.isFunction(require('fs-rsync'));
     });
 
+
+    it('should get remote stats', function (done) {
+      
+      var filename = '/';
+
+      assert.isFunction(rsync.remoteStat);
+
+      rsync.remoteStat({connection: fsrcon, filename: filename}, function (err, stats) {
+        assert.isNull(err);
+        assert.isObject(stats, 'stats should be object');
+        done();
+      });
+
+    });
+
+
     it('should sync with remote fs', function (done) {
 
       var browserfs = new BROWSERFS(),
         filename = '/',
-        fsrcon = new FSRCON(),
-        fnEnd;
-        
-      fnEnd = function (err) {
-        assert.isNull(err);
-        done();
-      };
+        options;
 
-      rsync.sync({
+      assert.isFunction(rsync.sync);
+        
+      options = {
         connection: fsrcon,
         fs: browserfs,
-        path: filename,
-        end: fnEnd
+        filename: filename
+      };
+
+      rsync.sync(options, function (err, result) {
+        assert.isNull(err);
+        assert.strictEqual(result, filename);
+        done();
       });
 
     });

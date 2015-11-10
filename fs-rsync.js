@@ -19,19 +19,41 @@
 
   };
 
-console.log(FSRPC ? 'FSRPC' : 'no FSRPC');
+// console.log(FSRPC ? 'FSRPC' : 'no FSRPC');
   
-  FSRSYNC.sync = function (options) {
+  FSRSYNC.sync = function (options, callback) {
 
-    var fnEnd = options.end;
+    var connection = options.connection,
+      filename = options.filename;
 
-// console.log(FSRPC.stringify('fnName',  ['arg0', 'arg1']));
-
-    fnEnd(null);
+    FSRSYNC.remoteStat({
+        connection: connection, 
+        filename: filename
+      },
+      function (err/*, remoteStats*/) {
+// console.log(remoteStats);
+        callback(err, filename);
+      }
+    );
 
     return this;
   };
 
+
+  FSRSYNC.remoteStat = function (options, callback) {
+
+    var connection = options.connection,
+      filename = options.filename,
+      rpc;
+
+    rpc = FSRPC.stringify('stat', [filename]);
+
+    connection.send({rpc: rpc}, 'rpc', function (err, result) {
+      var remoteStats = result ? result.rpc : undefined;
+      callback(err, remoteStats);
+    });
+
+  };
 
   return FSRSYNC;
 
