@@ -1,0 +1,29 @@
+{
+  "stat": [
+    {
+      "dataTypes": ["string"],
+      "isPath": true
+    }
+  ],
+  "rename": [      
+    {
+      "dataTypes": ["string"],
+      "isPath": true
+    },
+    {
+      "dataTypes": ["string"],
+      "isPath": true
+    }
+  ],
+  "mkdir": [
+    {"dataTypes": ["string"], "isPath": true},
+    {"dataTypes": ["undefined", "number"]}
+  ],
+  "readdir": [
+    {"dataTypes": ["string"], "isPath": true}
+  ],
+  "writeFile": [
+    {"dataTypes": ["string", "number"], "isPath": true},
+    {"dataTypes": ["object", "string"]}
+  ]
+}

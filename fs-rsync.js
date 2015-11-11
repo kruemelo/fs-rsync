@@ -30,8 +30,8 @@
         connection: connection, 
         filename: filename
       },
-      function (err/*, remoteStats*/) {
-// console.log(remoteStats);
+      function (err, remoteStats) {
+console.log('FSRSYNC.sync remoteStats: ', remoteStats);
         callback(err, filename);
       }
     );
@@ -47,9 +47,9 @@
       rpc;
 
     rpc = FSRPC.stringify('stat', [filename]);
-
+// console.log('FSRSYNC.remoteStat() rpc: ', rpc);
     connection.send({rpc: rpc}, 'rpc', function (err, result) {
-      var remoteStats = result ? result.rpc : undefined;
+      var remoteStats = result ? result.rpc[0] : undefined;
       callback(err, remoteStats);
     });
 
