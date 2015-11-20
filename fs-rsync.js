@@ -15,44 +15,34 @@
 
   'use strict';
     
-  var FSRSYNC = function () {
-
-  };
+  var FSRSYNC = function () {};
 
 // console.log(FSRPC ? 'FSRPC' : 'no FSRPC');
-  
-  FSRSYNC.sync = function (options, callback) {
 
-    var connection = options.connection,
-      filename = options.filename;
+  // list remote dir content and stats
+  FSRSYNC.list = function (connection, options, callback) {
 
-    FSRSYNC.remoteStat({
-        connection: connection, 
-        filename: filename
-      },
-      function (err, remoteStats) {
-console.log('FSRSYNC.sync remoteStats: ', remoteStats);
-        callback(err, filename);
-      }
+    var fsRPC = FSRPC.Client(),
+      path = options.path;
+
+    connection.send(
+      fsRPC.add('readdirStat', path).stringify(), 
+      'rpc',
+      callback
     );
 
-    return this;
   };
 
+  
+  FSRSYNC.syncDir = function (connection, options, callback) {
+      
+    callback('not implemented');
 
-  FSRSYNC.remoteStat = function (options, callback) {
+    // FSRSYNC.list(connection, {path: options.path}, function (err, list) {
+    //   // tbd
+    // });
 
-    var connection = options.connection,
-      filename = options.filename,
-      rpc;
-
-    rpc = FSRPC.stringify('stat', [filename]);
-// console.log('FSRSYNC.remoteStat() rpc: ', rpc);
-    connection.send({rpc: rpc}, 'rpc', function (err, result) {
-      var remoteStats = result ? result.rpc[0] : undefined;
-      callback(err, remoteStats);
-    });
-
+    return this;
   };
 
   return FSRSYNC;

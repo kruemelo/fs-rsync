@@ -1,68 +1,47 @@
 //Optional router that can be specified if your tests require back-end interaction.
-var fs = require('fs-extra');
-var FSRPC = require('fs-rpc');
-var validatorConfig = require('./validator-config.json');
+
 var path = require('path');
-var mountPath = path.join(require('os').tmpDir(), 'fs-rsync-test');
+var os = require('os');
+
+// fs-extra 
+var fs = require('fs-extra');
+
+// file system remote procedure calls module
+var FSRPC = require('fs-rpc');
+
+// rpc file system module
+var RPCFS = require('rpc-fs');
+
+// fs remote connection module
+var FSRCON = require('fs-rcon');
+
+var validatorConfig = require('./validator-config.json');
+var mountPath = path.join(os.tmpDir(), 'fs-rsync-test');
+
+function createTestDir () {
+
+  var src = path.join(__dirname, 'fixtures', 'testFS');
+
+  fs.emptyDirSync(mountPath);
+  fs.copySync(src, mountPath);
+}
 
 module.exports = function (server) {
 
   var bodyParser = require('body-parser'),
-    FSRCON = require('fs-rcon'),
     connections = {};
 
-  fs.emptyDirSync(mountPath);
+  createTestDir();
 
-  server.use(bodyParser.json({limit: '6mb'})); // for parsing application/json
+  // parse body
+  server.use(bodyParser.json({limit: '6mb'})); 
 
-  server.post('/rpc', function (req, res, next) {
-// console.log('router POST /rpc:', req.body);
-    var reqSID = req.body && req.body.SID ? req.body.SID : undefined,
-      reqData = req.body && req.body.data ? req.body.data : undefined,
-      strReqRPC = 'object' === typeof reqData ? reqData.rpc : undefined,
-      fsRPC = new FSRPC(validatorConfig),
-      rpc,
-      validationError,
-      rcon = connections[reqSID];
 
-    if (!rcon) {
-      res.status(500).end('ECON');
-      return;
-    }
-// delete validatorConfig['stat'];
-    rpc = fsRPC.parse(strReqRPC, mountPath);
-    validationError = fsRPC.validate(rpc, mountPath);
-
-    if (validationError) {
-      res.status(500).end(validationError.message);
-      return;
-    }
-
-    // res.json({rpc: {}});        
-
-    fsRPC.execute(fs, rpc, function () {
-// console.log('fsRPC.execute result: ', arguments);
-      var args = Array.prototype.slice.call(arguments),
-        err = args[0],
-        result;
-
-      if (err) {
-        res.status(500).end(err.message);
-      }
-      else {
-        result = Array.prototype.slice.call(args, 1);
-        res.json({rpc: result});        
-      }
-
-      next();
-    });
-
-  });
-
+  // initialize connections
   server.post('/init', function (req, res){
 
     var clientRandomKey = req.body && req.body.CRK ? req.body.CRK : undefined,
-      rcon = new FSRCON();
+      rcon = FSRCON.Server();
 
     rcon.connect({
       clientRandomKey: clientRandomKey
@@ -82,4 +61,47 @@ module.exports = function (server) {
     });
 
   });
+
+
+  // set mount path
+  server.post('/rpc', function (req, res, next) {
+
+    var reqSID = req.body && req.body.SID ? req.body.SID : undefined,
+      rcon = connections[reqSID];
+
+    if (!rcon) {
+      res.status(500).end('ECON');
+      return;
+    }
+
+    // may use an account specific mount path here
+    req.mountPath = mountPath;
+
+    next();
+
+  });
+
+  // apply rpc
+  server.use(FSRPC.Server(
+    validatorConfig, 
+    function (validationError, rpcList, req, res/*, next*/) {
+
+      if (validationError) {
+        res.status(500).end(validationError.message);
+        return;
+      }
+
+      FSRPC.Server.execute(RPCFS, rpcList, function (err, resultList) {
+
+        if (err) {
+          res.status(500).end(err.message);
+        }
+        else {
+          res.end(FSRPC.Server.stringify(resultList));        
+        }
+      });
+
+    }
+  ));
+
 };

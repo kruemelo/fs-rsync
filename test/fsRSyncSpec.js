@@ -9,22 +9,44 @@ define([
 
   describe('fs-rsync', function () {
 
-    var fsrcon;
+    var fsrcon = FSRCON.Client();
 
     before(function (done) {
-      fsrcon = new FSRCON();
       fsrcon.init({port: 3000}, done);
     });
 
 
-    it('should have loaded', function () {
+    it('should have loaded module', function () {
       assert.isFunction(rsync);
       assert.isFunction(BROWSERFS);
-      assert.isFunction(FSRCON);
+      assert.isObject(FSRCON);
     });
 
 
-    it('should get remote stats', function (done) {
+    it('should list remote directory contents and stats', function (done) {
+
+      var options = {
+        path: '/'
+      };
+
+      assert.isFunction(rsync.list, 'should have a list function');
+
+      rsync.list(fsrcon, options, function (err, list) {
+
+        assert.isNull(err, 'should not have an error');
+
+        assert.isArray(list, 'result should be an array');
+
+        console.log(list);
+
+        done();
+        
+      });
+
+    });
+
+
+    xit('should get remote stats', function (done) {
       
       var filename = '/';
 
@@ -41,23 +63,26 @@ define([
     });
 
 
-    xit('should sync with remote fs', function (done) {
+    xit('should sync dir with remote fs', function (done) {
 
       var browserfs = new BROWSERFS(),
-        filename = '/',
+        path = '/',
         options;
 
       assert.isFunction(rsync.sync);
         
       options = {
-        connection: fsrcon,
         fs: browserfs,
-        filename: filename
+        path: path
       };
 
-      rsync.sync(options, function (err, result) {
+      rsync.syncDir(fsrcon, options, function (err, result) {
         assert.isNull(err);
-        assert.strictEqual(result, filename);
+        assert.strictEqual(result, path);
+        assert.isTrue(browserfs.existsSync('/A'), 'file A should exist');
+        assert.isTrue(browserfs.statSync('/A').isFile(), 'file A should be a file');
+        assert.isTrue(browserfs.existsSync('/a'), 'file a should exist');
+        assert.isTrue(browserfs.statSync('/a').isDirectory(), 'file a should be directory');
         done();
       });
 

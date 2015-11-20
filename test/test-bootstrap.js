@@ -3,7 +3,6 @@ require.config({
 		chai: '/node_modules/chai/chai',
 		'browserfs': '/node_modules/node-browserfs/browserfs',
 		'fs-rpc': '/node_modules/fs-rpc/fs-rpc',
-		'cryptojs': '/node_modules/fs-rcon/libs/CryptoJS',
 		'fs-rcon': '/node_modules/fs-rcon/fs-rcon'
 	},
 	baseUrl: '/'
