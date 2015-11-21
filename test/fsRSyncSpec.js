@@ -29,9 +29,9 @@ define([
         path: '/'
       };
 
-      assert.isFunction(rsync.list, 'should have a list function');
+      assert.isFunction(rsync.remoteList, 'should have a list function');
 
-      rsync.list(fsrcon, options, function (err, list) {
+      rsync.remoteList(fsrcon, options, function (err, list) {
 
         assert.isNull(err, 'should not have an error');
 
@@ -48,15 +48,14 @@ define([
     });
 
 
-    xit('should get remote stats', function (done) {
+    it('should get stats for a remote file', function (done) {
       
       var filename = '/';
 
       assert.isFunction(rsync.remoteStat);
 
-      rsync.remoteStat({connection: fsrcon, filename: filename}, function (err, stats) {
-        assert.isNull(err, 'should not have an error');
-// console.log('fsRSyncSpec get remote stats, stats:', stats);        
+      rsync.remoteStat(fsrcon, {filename: filename}, function (err, stats) {
+        assert.isNull(err, 'should not have an error');     
         assert.isObject(stats, 'stats should be object');
         assert.includeMembers(Object.keys(stats), ['size', 'atime', 'mtime', 'ctime', 'birthtime']);
         done();

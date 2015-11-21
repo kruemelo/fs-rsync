@@ -20,7 +20,7 @@
 // console.log(FSRPC ? 'FSRPC' : 'no FSRPC');
 
   // list remote dir content and stats
-  FSRSYNC.list = function (connection, options, callback) {
+  FSRSYNC.remoteList = function (connection, options, callback) {
 
     var fsRPC = FSRPC.Client(),
       path = options.path;
@@ -33,11 +33,33 @@
         var parsed;
 
         if (err) { return callback(err); }
-        
+
         parsed = fsRPC.parse(result);
         callback.apply(null, parsed ? parsed[0] : undefined);
       }
     );
+
+  };
+
+
+  FSRSYNC.remoteStat = function (connection, options, callback) {
+
+    var fsRPC = FSRPC.Client(),
+      filename = options.filename;
+
+    connection.send(
+      fsRPC.add('stat', filename).stringify(), 
+      'rpc',
+      function (err, result) {
+        
+        var parsed;
+
+        if (err) { return callback(err); }
+
+        parsed = fsRPC.parse(result);
+        callback.apply(null, parsed ? parsed[0] : undefined);
+      }
+    );    
 
   };
 
