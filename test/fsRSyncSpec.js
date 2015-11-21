@@ -35,9 +35,11 @@ define([
 
         assert.isNull(err, 'should not have an error');
 
-        assert.isArray(list, 'result should be an array');
-
-        console.log(list);
+        assert.isObject(list, 'list');
+        assert.isObject(list.dirA, 'list.dirA');
+        assert.isTrue(list.dirA.isDirectory);
+        assert.isObject(list.file0, 'list.file0');
+        assert.isFalse(list.file0.isDirectory);
 
         done();
         

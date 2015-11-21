@@ -22,6 +22,9 @@
   "readdir": [
     {"dataTypes": ["string"], "isPath": true}
   ],
+  "readdirStat": [
+    {"dataTypes": ["string"], "isPath": true}
+  ],
   "writeFile": [
     {"dataTypes": ["string", "number"], "isPath": true},
     {"dataTypes": ["object", "string"]}

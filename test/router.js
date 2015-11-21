@@ -85,19 +85,23 @@ module.exports = function (server) {
   server.use(FSRPC.Server(
     validatorConfig, 
     function (validationError, rpcList, req, res/*, next*/) {
-
       if (validationError) {
         res.status(500).end(validationError.message);
         return;
       }
-
       FSRPC.Server.execute(RPCFS, rpcList, function (err, resultList) {
+
+        // console.log('FSRPC.Server.execute resultList', resultList);
 
         if (err) {
           res.status(500).end(err.message);
         }
         else {
-          res.end(FSRPC.Server.stringify(resultList));        
+          // console.log(
+          //   'FSRPC.Server.stringify(rpcList, resultList)', 
+          //   FSRPC.Server.stringify(rpcList, resultList)
+          // );
+          res.end(FSRPC.Server.stringify(rpcList, resultList));        
         }
       });
 

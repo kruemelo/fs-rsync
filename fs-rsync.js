@@ -28,7 +28,15 @@
     connection.send(
       fsRPC.add('readdirStat', path).stringify(), 
       'rpc',
-      callback
+      function (err, result) {
+        
+        var parsed;
+
+        if (err) { return callback(err); }
+        
+        parsed = fsRPC.parse(result);
+        callback.apply(null, parsed ? parsed[0] : undefined);
+      }
     );
 
   };
