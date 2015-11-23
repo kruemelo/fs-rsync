@@ -17,6 +17,10 @@
     "mocha": true,
     "module": true,
     "window": true,
+    "ArrayBuffer": true,
+    "Uint8Array": true,
+    "Uint16Array": true,
+    "escape": true,
     "$": true,
     /* MOCHA */
     "describe"   : false,

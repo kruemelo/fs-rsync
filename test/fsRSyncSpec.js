@@ -1,11 +1,14 @@
-define([
-  'chai',
-  'fs-rsync',
-  'browserfs',
-  'fs-rcon'
-], function (chai, rsync, BROWSERFS, FSRCON) {
+// define([
+//   'chai',
+//   'fs-rsync',
+//   'browserfs',
+//   'fs-rcon'
+// ], function (chai, rsync, BROWSERFS, FSRCON) {
 
   var assert = chai.assert;
+  var FSRCON = window.FSRCON;
+  var BROWSERFS = window.browserfs;
+  var rsync = window.FSRSYNC;
 
   describe('fs-rsync', function () {
 
@@ -17,9 +20,9 @@ define([
 
 
     it('should have loaded module', function () {
-      assert.isFunction(rsync);
-      assert.isFunction(BROWSERFS);
-      assert.isObject(FSRCON);
+      assert.isFunction(BROWSERFS, 'browserfs');
+      assert.isObject(FSRCON, 'fs-rcon');
+      assert.isFunction(rsync, 'fs-rsync');
     });
 
 
@@ -64,14 +67,38 @@ define([
     });
 
 
-    xit('should sync dir with remote fs', function (done) {
+    it('convert string to ArrayBuffer to string', function () {
+
+      var FSRPC,
+        content = 'buffer \u00bd + \u00bc = \u00be test',
+        buffer,
+        toStr;
+
+      assert.isFunction(rsync.getFSRPC);
+
+      FSRPC = rsync.getFSRPC();
+
+      assert.isObject(FSRPC);
+
+      buffer = FSRPC.stringToArrayBuffer(content);
+
+      assert.instanceOf(buffer, ArrayBuffer);
+
+      toStr = FSRPC.arrayBufferToString(buffer);
+
+      assert.strictEqual(toStr, content);
+
+    });
+
+
+    xit('should sync all files in a directory with remote fs', function (done) {
 
       var browserfs = new BROWSERFS(),
         path = '/',
         options;
 
-      assert.isFunction(rsync.sync);
-        
+      assert.isFunction(rsync.syncDir);
+
       options = {
         fs: browserfs,
         path: path
@@ -80,10 +107,15 @@ define([
       rsync.syncDir(fsrcon, options, function (err, result) {
         assert.isNull(err);
         assert.strictEqual(result, path);
-        assert.isTrue(browserfs.existsSync('/A'), 'file A should exist');
-        assert.isTrue(browserfs.statSync('/A').isFile(), 'file A should be a file');
-        assert.isTrue(browserfs.existsSync('/a'), 'file a should exist');
-        assert.isTrue(browserfs.statSync('/a').isDirectory(), 'file a should be directory');
+        assert.isTrue(browserfs.existsSync('/file0'), 'file should exist');
+        assert.isTrue(browserfs.statSync('/file0').isFile(), 'file should be a file');
+        assert.strictEqual(
+          browserfs.readFileSync('/file0', {encoding: true}),
+          'file0 content',
+          'equal file contents'
+        );
+        assert.isTrue(browserfs.existsSync('/dirA'), 'directory should exist');
+        assert.isTrue(browserfs.statSync('/dirA').isDirectory(), 'file should be directory');
         done();
       });
 
@@ -91,4 +123,4 @@ define([
 
   }); // describe fs-rsync
 
-}); // define
+// }); // define

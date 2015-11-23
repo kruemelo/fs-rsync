@@ -18,20 +18,21 @@
   "devDependencies": {
     "body-parser": "^1.14.1",
     "chai": "^3.4.1",
+    "express": "^4.13.3",
     "fs-extra": "^0.26.2",
     "grunt": "^0.4.5",
-    "grunt-contrib-clean": "^0.6.0",
     "grunt-contrib-jshint": "^0.11.3",
     "grunt-contrib-uglify": "^0.10.0",
-    "grunt-mocha-require-phantom": "^0.6.2",
-    "node-browserfs": "^1.0.4",
-    "rpc-fs": "^0.0.1"
+    "jquery": "^2.1.4",
+    "mocha": "^2.3.4",
+    "node-browserfs": "^1.1.0",
+    "rpc-fs": "^0.1.1"
   },
   "dependencies": {
     "fs-rcon": "^2.0.1",
-    "fs-rpc": "^2.0.4"
+    "fs-rpc": "^2.0.6"
   },
   "scripts": {
-    "test": "grunt"
+    "test": "node ./test/server.js"
   }
 }
