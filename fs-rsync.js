@@ -15,7 +15,7 @@
 
   'use strict';
 
-console.log('FSRSYNC FSRPC ?', FSRPC ? 'OK ' + (typeof FSRPC) : 'MISSING!');
+// console.log('FSRSYNC FSRPC ?', FSRPC ? 'OK ' + (typeof FSRPC) : 'MISSING!');
     
   var FSRSYNC = function () {};
 
@@ -43,7 +43,7 @@ console.log('FSRSYNC FSRPC ?', FSRPC ? 'OK ' + (typeof FSRPC) : 'MISSING!');
       }
     );
 
-  };
+  };  // FSRSYNC.remoteList
 
 
   FSRSYNC.remoteStat = function (connection, options, callback) {
@@ -65,6 +65,45 @@ console.log('FSRSYNC FSRPC ?', FSRPC ? 'OK ' + (typeof FSRPC) : 'MISSING!');
       }
     );    
 
+  };  // FSRSYNC.remoteStat
+
+
+  FSRSYNC.remoteReadFile = function (connection, options, callback) {
+
+    var fsRPC = FSRPC.Client(),
+      filename = options.filename;
+
+    connection.send(
+      fsRPC.add('readFileChunked', [filename])
+        .stringify(), 
+      'rpc',
+      function (err, result) {
+
+        var parsed,
+          readResult;
+
+        if (err) { return callback(err); }
+
+        try {
+          parsed = fsRPC.parse(result);
+
+          if (parsed) {
+            readResult = parsed[0];
+            if (readResult && readResult[0] instanceof Error) {
+              return callback(parsed[0]);              
+            }
+            else if (readResult && readResult[1] && 'string' === typeof readResult[1].content) {
+              return callback.apply(null, [null, atob(readResult[1].content)]); 
+            }
+            callback(null);
+          }
+        }
+        catch (e) {
+          callback(e);
+        }
+      }
+    );    
+
   };
 
 
@@ -80,62 +119,127 @@ console.log('FSRSYNC FSRPC ?', FSRPC ? 'OK ' + (typeof FSRPC) : 'MISSING!');
   };
 
 
-  FSRSYNC.sync = function (connection, options, callback) {
-      
-    var localFS = options.fs,
-      filename = options.filename,
-      localFileStats;
+  FSRSYNC.eachAsync = function (list, fn, callback) {
 
-    if (!localFS.existsSync(filename)) {
-      // new file created on remote fs 
-      
+    var listIndex = 0,
+      listPromise;
+
+    if (!list || 0 === list.length) {
+      callback();
+      return;
     }
 
-    localFileStats = localFS.statSync(filename);      
+    function allDone (err) {
+      setTimeout(function () {
+        callback(err || null);          
+      }, 0);
+    }
 
-    callback(new Error('not implemented'));
+    listPromise = new Promise(function (resolveList, rejectList) {
+
+      var fnPromise;
+
+      function executor (resolve, reject) {     
+        try {
+          fn.call(null, list[listIndex], function (err) {
+            if (err instanceof Error) {
+              reject(err);
+            }
+            else {
+              resolve();
+            }
+          });
+        } 
+        catch(e) {
+          reject(e);
+        }  
+      }
+
+      function fnPromiseResolved () {
+        ++listIndex;
+        if (listIndex < list.length) {
+          fnPromise = new Promise(executor);
+
+          fnPromise.then(
+            fnPromiseResolved,
+            fnPromiseRejected
+          );      
+        }
+        else {
+          resolveList();
+        }
+      }
+
+      function fnPromiseRejected (err) {
+        rejectList(err);
+      }
+
+      fnPromise = new Promise(executor);
+
+      fnPromise.then(
+        fnPromiseResolved,
+        fnPromiseRejected
+      );      
+    });
+
+    listPromise.then(allDone, allDone);
   };
 
   
   FSRSYNC.syncDir = function (connection, options, callback) {
 
-    return callback(new Error('not implemented'));
+    // return callback(new Error('not implemented'));
       
-//     var localFS = options.fs,
-//       path = options.path;
+    var localFS = options.fs,
+      path = options.path;
 
+    if ('/' !== path[path.length - 1]) {
+      path = path + '/';
+    }
 
-//     if ('/' !== path[path.length - 1]) {
-//       path = path + '/';
-//     }
-
-//     FSRSYNC.remoteList(connection, {path: path}, function (err, remoteList) {
+    function handleRemoteList (err, remoteList) {
       
-//       var localList = FSRSYNC.localList(localFS, path);
-//       if (err) { return callback(err); }
-// // console.log('localList', localList, 'remoteList', remoteList);
+      var localList = FSRSYNC.localList(localFS, path);
+      if (err) { return callback(err); }
+// console.log('localList', localList, 'remoteList', remoteList);
 
-//       // loop remote files
-//       Object.keys(remoteList).forEach(function (remoteFilename) {
+      // loop remote files
+      FSRSYNC.eachAsync(
+        Object.keys(remoteList),
+        function (remoteFilename, done) {
+          var remoteFileStats = remoteList[remoteFilename];
+          if (!localList[remoteFilename]) {
+            // new file created on remote fs 
+            if (remoteFileStats.isDirectory) {
+              localFS.mkdir(path + remoteFilename, done);
+            }
+            else {
+              FSRSYNC.remoteReadFile(
+                connection,
+                {filename: path + remoteFilename}, 
+                function (err, data) {
+                  if (err) {
+                    return done(err);
+                  }
+                  localFS.writeFile(path + remoteFilename, data, done);
+                }
+              );
+            }
+          }
+          else {
+            done();            
+          }
+        },
+        function (err) {
+          callback (err, path);
+        }
+      );
 
-//         var remoteFileStats = remoteList[remoteFilename];
-//         if (!localList[remoteFilename]) {
-//           // new file created on remote fs 
-//           if (remoteFileStats.isDirectory) {
-//             localFS.mkdirSync(path + remoteFilename);
-//           }
-//           else {
-//             localFS.writeFileSync(path + remoteFilename, 'file0 content');
-// console.log(path + remoteFilename, remoteFileStats);
-//           }
-//         }
+    } // handleRemoteList
 
-//       });
+    FSRSYNC.remoteList(connection, {path: path}, handleRemoteList);
 
-//       callback(null, path);
-
-//     });
-  };
+  };  // FSRSYNC.syncDir
 
 
   return FSRSYNC;

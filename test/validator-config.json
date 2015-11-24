@@ -25,6 +25,10 @@
   "readdirStat": [
     {"dataTypes": ["string"], "isPath": true}
   ],
+  "readFileChunked": [
+    {"dataTypes": ["string", "number"], "isPath": true},
+    {"dataTypes": ["object", "string", "undefined"]}
+  ],
   "writeFile": [
     {"dataTypes": ["string", "number"], "isPath": true},
     {"dataTypes": ["object", "string"]}

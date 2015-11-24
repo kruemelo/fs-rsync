@@ -12,6 +12,7 @@ var FSRCON = require('fs-rcon');
 
 var validatorConfig = require('./validator-config.json');
 // var mountPath = path.join(os.tmpDir(), 'fs-rsync-test');
+console.log('validatorConfig', validatorConfig);
 
 var connections = {};
 
@@ -37,7 +38,7 @@ router.use(function(req, res, next) {
 });
 
 // initialize connections
-router.post('/init', function (req, res){
+router.post('/init', function (req, res, next){
 
   var clientRandomKey = req.body && req.body.CRK ? req.body.CRK : undefined,
     rcon = FSRCON.Server();
@@ -48,6 +49,7 @@ router.post('/init', function (req, res){
 
     if (err) {
       res.status(500).end(err.message);
+      next(err);
       return;        
     }
 
@@ -56,6 +58,8 @@ router.post('/init', function (req, res){
     res.end(JSON.stringify({
       SRK: rcon.serverRandomKey
     }));
+
+    next();
     
   });
 
@@ -69,6 +73,7 @@ router.post('/rpc', function (req, res, next) {
 
   if (!rcon) {
     res.status(500).end('ECON');
+    next(new Error('ECON'));
     return;
   }
 
@@ -82,28 +87,33 @@ router.post('/rpc', function (req, res, next) {
 // apply rpc
 router.use(FSRPC.Server(
   validatorConfig, 
-  function (validationError, rpcList, req, res/*, next*/) {
+  function (validationError, rpcList, req, res, next) {
     if (validationError) {
-      res.status(500).end(validationError.message);
+      next(validationError);
       return;
     }
     FSRPC.Server.execute(RPCFS, rpcList, function (err, resultList) {
 
-      // console.log('FSRPC.Server.execute resultList', resultList);
+      // console.log(
+      //   'FSRPC.Server.stringify(rpcList, resultList)', 
+      //   FSRPC.Server.stringify(rpcList, resultList)
+      // );
 
-      if (err) {
-        res.status(500).end(err.message);
-      }
-      else {
-        // console.log(
-        //   'FSRPC.Server.stringify(rpcList, resultList)', 
-        //   FSRPC.Server.stringify(rpcList, resultList)
-        // );
+      if (!err) {
         res.end(FSRPC.Server.stringify(rpcList, resultList));        
       }
+      
+      next(err);
     });
 
   }
 ));
+
+router.use(function(err, req, res, next) {
+  console.error(err.stack);
+  res.status(500).end(err.message);
+  next(err);
+});
+
 
 module.exports = router;

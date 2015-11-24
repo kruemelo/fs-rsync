@@ -1,0 +1,45 @@
+file1content
+Specification [w3c.github.io] ref
+Script yielding with setImmediate [nczonline.net] info
+The case for setImmediate() [nczonline.net] info
+Firefox tracking bug [bugzilla.mozilla.org] info
+Chrome bug closed as WONTFIX [code.google.com] info
+setImmediate polyfill [github.com] polyfill
+IE platform status: Shipped [status.modern.IE] official status
+
+The Default Error Handler
+
+Express comes with an in-built error handler, which takes care of any errors that might be encountered in the app. This default error-handling middleware is added at the end of the middleware stack.
+
+If you pass an error to next() and you do not handle it in an error handler, it will be handled by the built-in error handler - the error will be written to the client with the stack trace. The stack trace is not included in the production environment.
+
+If you call next() with an error after you have started writing the response, for instance if you encounter an error while streaming the response to the client, Express’ default error handler will close the connection and make the request be considered failed.
+
+So when you add a custom error handler you will want to delegate to the default error handling mechanisms in express, when the headers have already been sent to the client.
+
+Common Pitfalls (StackOverflow)
+Synchronous iteration functions
+
+If you get an error like RangeError: Maximum call stack size exceeded. or other stack overflow issues when using async, you are likely using a synchronous iterator. By synchronous we mean a function that calls its callback on the same tick in the javascript event loop, without doing any I/O or using any timers. Calling many callbacks iteratively will quickly overflow the stack. If you run into this issue, just defer your callback with async.setImmediate to start a new call stack on the next tick of the event loop.
+
+Collections
+
+each(arr, iterator, [callback])
+
+Applies the function iterator to each item in arr, in parallel. The iterator is called with an item from the list, and a callback for when it has finished. If the iterator passes an error to its callback, the main callback (for the each function) is immediately called with the error.
+
+Note, that since this function applies iterator to each item in parallel, there is no guarantee that the iterator functions will complete in order.
+
+Arguments
+
+    arr - An array to iterate over.
+    iterator(item, callback) - A function to apply to each item in arr. The iterator is passed a callback(err) which must be called once it has completed. If no error has occurred, the callback should be run without arguments or with an explicit null argument. The array index is not passed to the iterator. If you need the index, use forEachOf.
+    callback(err) - Optional A callback which is called when all iterator functions have finished, or an error occurs.
+
+Oktober
+
+    11. Oktober: Abkommen über finanzielle Zusammenarbeit zwischen der Bundesrepublik Deutschland und Ruanda
+    13.–17. Oktober: Entführung des Flugzeugs Landshut nach Mogadischu und Befreiung durch die GSG9
+    18. Oktober: Todesnacht von Stammheim in der Nacht zum 18. Oktober begehen die inhaftierten Anführer der Rote Armee Fraktion Andreas Baader, Gudrun Ensslin und Jan-Carl Raspe in ihren Gefängniszellen in der JVA Stuttgart Suizid
+    19. Oktober: Deutscher Herbst: Hanns Martin Schleyer, am 5. September entführt, wird in Mülhausen im Elsass tot aufgefunden
+
