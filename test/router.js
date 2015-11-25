@@ -3,6 +3,7 @@ var router = express.Router();
 
 // file system remote procedure calls module
 var FSRPC = require('fs-rpc');
+var RPC = FSRPC.Server;
 
 // rpc file system module
 var RPCFS = require('rpc-fs');
@@ -85,25 +86,24 @@ router.post('/rpc', function (req, res, next) {
 });
 
 // apply rpc
-router.use(FSRPC.Server(
+router.use(RPC(
   validatorConfig, 
-  function (validationError, rpcList, req, res, next) {
+  function (validationError, rpc, req, res, next) {
+    
     if (validationError) {
       next(validationError);
       return;
     }
-    FSRPC.Server.execute(RPCFS, rpcList, function (err, resultList) {
+
+    RPC.execute(RPCFS, rpc, function (err, result) {
 
       // console.log(
-      //   'FSRPC.Server.stringify(rpcList, resultList)', 
-      //   FSRPC.Server.stringify(rpcList, resultList)
+      //   'RPC.execute error:', err,
+      //   'RPC.execute result:', result,
+      //   'RPC.stringify(err,result):', RPC.stringify([err, result])
       // );
 
-      if (!err) {
-        res.end(FSRPC.Server.stringify(rpcList, resultList));        
-      }
-      
-      next(err);
+      res.end(RPC.stringify([err, result]));              
     });
 
   }
@@ -114,6 +114,5 @@ router.use(function(err, req, res, next) {
   res.status(500).end(err.message);
   next(err);
 });
-
 
 module.exports = router;

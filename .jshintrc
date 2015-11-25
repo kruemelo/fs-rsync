@@ -21,6 +21,9 @@
     "Uint8Array": true,
     "Uint16Array": true,
     "escape": true,
+    "setTimeout": true,
+    "atob": true,
+    "__dirname": true,
     "Promise": true,
     "$": true,
     /* MOCHA */

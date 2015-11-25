@@ -15,6 +15,8 @@
 
   'use strict';
 
+  var RPC = FSRPC.Client;
+
 // console.log('FSRSYNC FSRPC ?', FSRPC ? 'OK ' + (typeof FSRPC) : 'MISSING!');
     
   var FSRSYNC = function () {};
@@ -26,20 +28,16 @@
   // list remote dir content and stats
   FSRSYNC.remoteList = function (connection, options, callback) {
 
-    var fsRPC = FSRPC.Client(),
-      path = options.path;
+    var path = options.path;
 
     connection.send(
-      fsRPC.add('readdirStat', path).stringify(), 
+      RPC.stringify('readdirStat', path), 
       'rpc',
-      function (err, result) {
-        
-        var parsed;
+      function (err, result) {     
 
         if (err) { return callback(err); }
 
-        parsed = fsRPC.parse(result);
-        callback.apply(null, parsed ? parsed[0] : undefined);
+        callback.apply(null, RPC.parse(result));
       }
     );
 
@@ -48,63 +46,90 @@
 
   FSRSYNC.remoteStat = function (connection, options, callback) {
 
-    var fsRPC = FSRPC.Client(),
-      filename = options.filename;
+    var filename = options.filename;
 
     connection.send(
-      fsRPC.add('stat', filename).stringify(), 
+      RPC.stringify('stat', filename), 
       'rpc',
       function (err, result) {
-
-        var parsed;
-
-        if (err) { return callback(err); }
-
-        parsed = fsRPC.parse(result);
-        callback.apply(null, parsed ? parsed[0] : undefined);
+        callback.apply(err, RPC.parse(result));
       }
     );    
 
   };  // FSRSYNC.remoteStat
 
 
-  FSRSYNC.remoteReadFile = function (connection, options, callback) {
+  FSRSYNC.remoteReadFile = function (connection, filename, options, callback) {
 
-    var fsRPC = FSRPC.Client(),
-      filename = options.filename;
+// console.log('remoteReadFile', filename);
 
-    connection.send(
-      fsRPC.add('readFileChunked', [filename])
-        .stringify(), 
-      'rpc',
-      function (err, result) {
+    var fileContent = '';
 
-        var parsed,
-          readResult;
+    if ('undefined' === typeof callback) {
+      callback = options;
+      options = {};
+    }
 
-        if (err) { return callback(err); }
+    options = options || {};
 
-        try {
-          parsed = fsRPC.parse(result);
+    options.chunkSize = options.chunkSize || 1024 * 128;
 
-          if (parsed) {
-            readResult = parsed[0];
-            if (readResult && readResult[0] instanceof Error) {
-              return callback(parsed[0]);              
+    function readFileChunk (chunk) {
+
+      // console.log('readFileChunk', chunk);
+
+      // rpcfs.readFileChunked (filename, options, callback)
+      // options: {chunkSize: 128k, chunk: 2}
+      // callback: (err, result)
+      // result: {chunk: 1, EOF: true, content: 'base64', chunkSize: 128k, stats: {}}
+
+      options.chunk = chunk;
+
+      connection.send(
+        RPC.stringify('readFileChunked', [filename, options]), 
+        'rpc',
+        function (err, result) {
+
+          var parsed,
+            readResult;
+
+          if (err) { callback(err); return; }
+
+          try {
+            parsed = RPC.parse(result);
+            // console.log('read parsed:', parsed);
+            if (parsed) {
+
+              readResult = parsed[1];
+              
+              if (parsed[0] instanceof Error) {
+                err = readResult[0];
+              }
+              else if (readResult && 'string' === typeof readResult.content) {
+                fileContent += RPC.atob(readResult.content);
+              }
             }
-            else if (readResult && readResult[1] && 'string' === typeof readResult[1].content) {
-              return callback.apply(null, [null, atob(readResult[1].content)]); 
-            }
-            callback(null);
+          }
+          catch (e) {
+            err = e;
+          }
+
+          if (readResult && readResult.EOF || err) {
+            callback.apply(null, [err || null, err ? undefined : fileContent]);            
+          }
+          else {
+            // next chunk
+            readFileChunk(chunk + 1);
           }
         }
-        catch (e) {
-          callback(e);
-        }
-      }
-    );    
+      );    
+    } // readFileChunk
 
-  };
+    readFileChunk(1);
+
+
+
+  };  // FSRSYNC.remoteReadFile
 
 
   FSRSYNC.localList = function (fs, path) {
@@ -116,7 +141,7 @@
     });
 
     return result;
-  };
+  };  // FSRSYNC.localList
 
 
   FSRSYNC.eachAsync = function (list, fn, callback) {
@@ -183,7 +208,7 @@
     });
 
     listPromise.then(allDone, allDone);
-  };
+  };  // FSRSYNC.eachAsync
 
   
   FSRSYNC.syncDir = function (connection, options, callback) {
@@ -216,7 +241,7 @@
             else {
               FSRSYNC.remoteReadFile(
                 connection,
-                {filename: path + remoteFilename}, 
+                path + remoteFilename, 
                 function (err, data) {
                   if (err) {
                     return done(err);

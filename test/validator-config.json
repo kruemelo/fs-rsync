@@ -29,8 +29,9 @@
     {"dataTypes": ["string", "number"], "isPath": true},
     {"dataTypes": ["object", "string", "undefined"]}
   ],
-  "writeFile": [
+  "writeFileChunked": [
     {"dataTypes": ["string", "number"], "isPath": true},
-    {"dataTypes": ["object", "string"]}
+    {"dataTypes": ["string"]},
+    {"dataTypes": ["object", "undefined"]}
   ]
 }

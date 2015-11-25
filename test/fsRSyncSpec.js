@@ -51,7 +51,7 @@ describe('fs-rsync', function () {
     assert.isFunction(rsync.remoteStat);
 
     rsync.remoteStat(fsrcon, {filename: filename}, function (err, stats) {
-      assert.isNull(err, 'should not have an error');     
+      assert.isNull(err, 'should not have an error');
       assert.isObject(stats, 'stats should be object');
       assert.includeMembers(Object.keys(stats), ['size', 'atime', 'mtime', 'ctime', 'birthtime']);
       done();
@@ -84,6 +84,24 @@ describe('fs-rsync', function () {
   });
 
 
+  it('should load a remote file with small chunks', function (done) {
+
+    rsync.remoteReadFile(
+      fsrcon,
+      '/file1',
+      {chunkSize: 1024},
+      function (err, data) {
+
+        assert.isNull(err, 'should not have an error');
+        assert.strictEqual(data.length, 3449, 'file content length');
+
+        done();
+      }
+    );
+
+  });
+
+
   it('should sync all files in a directory with remote fs', function (done) {
 
     var browserfs = new BROWSERFS(),
@@ -98,13 +116,13 @@ describe('fs-rsync', function () {
     };
 
     rsync.syncDir(fsrcon, options, function (err, result) {
-      assert.isNull(err);
+      assert.isNull(err, 'should not have an error');
       assert.strictEqual(result, path);
-      assert.isTrue(browserfs.existsSync('/file0'), 'file should exist');
-      assert.isTrue(browserfs.statSync('/file0').isFile(), 'file should be a file');
+      assert.isTrue(browserfs.existsSync('/file2'), 'file should exist');
+      assert.isTrue(browserfs.statSync('/file2').isFile(), 'file should be a file');
       assert.strictEqual(
-        browserfs.readFileSync('/file0', {encoding: true}),
-        'file0 content',
+        browserfs.readFileSync('/file2', {encoding: true}),
+        '½ + ¼ = ¾',
         'equal file contents'
       );
       assert.isTrue(browserfs.existsSync('/dirA'), 'directory should exist');
