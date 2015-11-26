@@ -37,5 +37,6 @@ var server = app.listen(3000, 'localhost', function () {
   var port = server.address().port;
 
   console.log('test server listening at http://%s:%s', host, port);
-  console.log('open file://' + __dirname + '/client.html in browser');
+  console.log('open specs at url file://' + __dirname + '/index.html in browser');
+  console.log('or example at file://' + path.join(__dirname, '..', 'example', 'index.html') + ' in browser');
 });

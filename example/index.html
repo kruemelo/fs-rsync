@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <!--
+        "If you manually code a script tag in HTML to load a script with an anonymous define() call, this error can occur."
+        So make sure the only <script> tag (at least for any scripts which call define()) in your index.html is the one to requirejs.
+        -->
+        <script src="require.js"></script>
+        <style type="text/css">
+          #dropzone {
+            height: 100px;
+            text-align: center;
+            font-size: 50px;
+            border: 4px solid #ddd;
+            font-style: italic;
+            color: #ccc;
+        }
+        #fileList li{
+          cursor: pointer;
+          line-height: 27px;
+          font-size: 20px;
+        }
+        </style>
+        <script>
+
+        var fs, saveAs, rsync, rcon, cwd = '/';
+
+        var inputCWD;
+        var btnCD;
+        var btnSync;
+        var fileListEl;
+        var dropzone;
+
+        window.onload = function () {
+
+          inputCWD = document.getElementById('inputCWD');
+          btnCD = document.getElementById('btnCD');
+          btnSync = document.getElementById('btnSync');
+          fileListEl = document.getElementById('fileList');
+          dropzone = document.getElementById('dropzone');
+          
+          dropzone.addEventListener("dragenter", preventDefault, false);
+          dropzone.addEventListener("dragover", preventDefault, false);
+          dropzone.addEventListener("drop", drop, false);
+
+          btnSync.addEventListener("click", syncCwd);
+
+          btnCD.addEventListener("click", function () {
+            cd(inputCWD.value);
+          });
+
+        };
+
+        function preventDefault (ev) {
+          ev.stopPropagation();
+          ev.preventDefault();
+        }
+
+        function syncCwd () {
+          var options = {
+              fs: fs,
+              path: cwd
+            };
+
+          rsync.syncDir(rcon, options, function (err) {
+            if (err) {
+              console.error(err);
+            }
+            ls();
+          });
+        }
+
+        function cd (path) {
+          inputCWD.value = cwd = path;
+          ls();
+        }
+
+        function ls () {
+          
+          fileListEl.innerHTML = '';
+
+          fs.readdirSync(cwd).forEach(function (filename) {
+
+            var fileEl = document.createElement('li'),
+              fileStats = fs.statSync(fs.joinPath(cwd, filename));
+
+            fileEl.textContent = (fileStats.isDirectory() ? 'd' : '-')
+              + ' ' + filename 
+              + ' ' + fileStats.mtime 
+              + ' ' + fs.fileSizeIEC(fileStats.size);
+  
+            if (fileStats.isDirectory()) {
+              fileEl.addEventListener('click', function () {
+                  cd(fs.joinPath(cwd,filename));
+                  syncCwd();
+              });
+            }
+            else {
+              fileEl.addEventListener('click', function () {
+                downloadFile(fs.joinPath(cwd,filename));                
+              });
+            }
+
+          fileListEl.appendChild(fileEl);
+
+            console.log('readdir filename', filename);
+          });
+        }
+
+        function drop (ev) {
+          preventDefault(ev);
+          var files = ev.dataTransfer.files;
+          for (var i = 0; i < files.length; ++i) {
+              (function (file) {
+                var reader = new FileReader();
+                reader.onload = function (evt) {
+                    fs.writeFile(file.name, evt.target.result, function (err, result) {
+                      appendFile(err || file.name);
+                    });
+                }
+                reader.readAsArrayBuffer(file);
+              })(files[i]);
+          }
+        }
+
+        function appendFile (filename) {
+
+          var fileListEl = document.getElementById('fileList'),
+            fileEl = document.createElement('li'),
+            fileStats = fs.statSync(filename);
+
+          fileEl.textContent = filename + ' ' + fileStats.mtime + ' ' + fs.fileSizeIEC(fileStats.size);
+          ls();
+        }
+
+        function downloadFile (filename) {
+
+            var fileStats = fs.statSync(filename);
+
+            if (fileStats.isFile()) {
+              fs.readFile(filename, function (err, buffer) {
+                if (err) {
+                    console.error(err);
+                    return;
+                }
+                saveAs(new Blob([buffer]), fs.basename(filename));
+              });
+            }
+        }
+
+        requirejs.config({
+            'baseUrl': './',
+            'paths': {
+            'browserfs': '../node_modules/node-browserfs/browserfs',
+            'saveAs': './FileSaver/FileSaver.min',
+            'fs-rsync': '../fs-rsync',
+            'fs-rpc': '../node_modules/fs-rpc/fs-rpc',
+            'fs-rcon': '../node_modules/fs-rcon/fs-rcon'
+            }
+        });
+
+        require([
+            'browserfs', 
+            'saveAs', 
+            'fs-rsync',
+            'fs-rcon'
+          ], 
+          function (
+            browserfs, 
+            _saveAs, 
+            _rsync,
+            _rcon
+          ) {
+          fs = new browserfs();
+          saveAs = _saveAs;
+          rsync = _rsync;
+          rcon = _rcon.Client();
+
+          rcon.init({port: 3000}, function (err) {
+            if (err) {
+              window.alert('failed to connect to server: ' + err.message);
+              console.error(err);
+            }
+            else {
+              console.info('connected');
+              cd(cwd);
+              // syncCwd();
+            }
+          });
+        });
+
+        </script
+    </head>
+    <body>
+      <p>this example requires to have the test server started: $ node ./test/server.js</p>
+      <div id="cwd">
+        <input type="text" id="inputCWD" value="/">
+        <input type="button" id="btnCD" value="cd">
+        <input type="button" id="btnSync" value="sync">
+      </div>
+      <ol id="fileList"></ol>
+      <div id="dropzone">Drop files here</div>
+    </body>
+</html>
