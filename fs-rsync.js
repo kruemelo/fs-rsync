@@ -232,28 +232,25 @@
       FSRSYNC.eachAsync(
         Object.keys(remoteList),
         function (remoteFilename, done) {
-          var remoteFileStats = remoteList[remoteFilename];
+
+          var remoteStats = remoteList[remoteFilename];
+          
           if (!localList[remoteFilename]) {
             // new file created on remote fs 
-            if (remoteFileStats.isDirectory) {
-              localFS.mkdir(path + remoteFilename, done);
-            }
-            else {
-              FSRSYNC.remoteReadFile(
-                connection,
-                path + remoteFilename, 
-                function (err, data) {
-                  if (err) {
-                    return done(err);
-                  }
-                  localFS.writeFile(path + remoteFilename, data, done);
-                }
-              );
-            }
+            FSRSYNC.createLocal(
+              {
+                filename: path + remoteFilename,
+                remoteStats: remoteStats,
+                localFS: localFS,
+                connection: connection
+              }, 
+              done
+            );
           }
           else {
             done();            
           }
+
         },
         function (err) {
           callback (err, path);
@@ -265,6 +262,113 @@
     FSRSYNC.remoteList(connection, {path: path}, handleRemoteList);
 
   };  // FSRSYNC.syncDir
+
+
+  FSRSYNC.createLocal = function (options, callback) {
+
+    var filename = options.filename,
+      remoteStats = options.remoteStats,
+      localFS = options.localFS,
+      connection = options.connection;
+
+    if (remoteStats.isDirectory) {
+      // create the directory locally
+      FSRSYNC.createLocalDir({
+        localFS: localFS,
+        path: filename,
+        remoteStats: remoteStats
+      }, callback);
+    }
+    else {
+      // create file locally
+      FSRSYNC.remoteReadFile(
+        connection,
+        filename, 
+        function (err, data) {
+          
+          if (err) {
+            return callback(err);
+          }
+          
+          FSRSYNC.createLocalFile({
+            localFS: localFS,
+            filename: filename,
+            remoteContent: data,
+            remoteStats: remoteStats
+          }, callback);
+          
+        }
+      );
+    }
+  };
+
+
+  FSRSYNC.createLocalDir = function (options, callback ) {
+    
+    var localFS = options.localFS,
+      path = options.path,
+      remoteStats = options.remoteStats;
+
+    localFS.mkdir(path, function (err) {
+      
+      var time = Date.now(),
+        parentDirNode,
+        localDirNode;
+
+      if (err) { return callback(err); }
+
+      localDirNode = localFS.getNode(path);
+      localDirNode.remoteStats = remoteStats;
+
+      // update local stats
+      localDirNode.ctime = remoteStats.birthtime;
+      localDirNode.mtime = remoteStats.mtime;
+      localDirNode.atime = remoteStats.atime;
+
+      parentDirNode = localFS.getNode(localFS.dirname(path));
+
+      parentDirNode.atime = time;
+      parentDirNode.mtime = time;
+
+      callback();
+    });
+
+  };
+
+  FSRSYNC.createLocalFile = function (options, callback) {
+
+    var localFS = options.localFS,
+      filename = options.filename,
+      remoteContent = options.remoteContent,
+      remoteStats = options.remoteStats;
+
+    // console.log(filename, remoteStats);
+
+    localFS.writeFile(filename, remoteContent, function (err) {
+
+      var time = Date.now(),
+        parentDirNode,
+        localFileNode;
+
+      if (err) { return callback(err); }
+      
+      localFileNode = localFS.getNode(filename);
+
+      localFileNode.remoteStats = remoteStats;
+
+      // update local stats
+      localFileNode.ctime = remoteStats.birthtime;
+      localFileNode.mtime = remoteStats.mtime;
+      localFileNode.atime = remoteStats.atime;
+
+      parentDirNode = localFS.getNode(localFS.dirname(filename));
+
+      parentDirNode.atime = time;
+      parentDirNode.mtime = time;
+
+      callback(null);
+    });
+  };  // createLocalFile
 
 
   return FSRSYNC;
