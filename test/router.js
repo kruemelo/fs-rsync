@@ -96,13 +96,6 @@ router.use(RPC(
     }
 
     RPC.execute(RPCFS, rpc, function (err, result) {
-
-      // console.log(
-      //   'RPC.execute error:', err,
-      //   'RPC.execute result:', result,
-      //   'RPC.stringify(err,result):', RPC.stringify([err, result])
-      // );
-
       res.end(RPC.stringify([err, result]));              
     });
 

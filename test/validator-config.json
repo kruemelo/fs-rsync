@@ -5,16 +5,6 @@
       "isPath": true
     }
   ],
-  "rename": [      
-    {
-      "dataTypes": ["string"],
-      "isPath": true
-    },
-    {
-      "dataTypes": ["string"],
-      "isPath": true
-    }
-  ],
   "mkdir": [
     {"dataTypes": ["string"], "isPath": true},
     {"dataTypes": ["undefined", "number"]}

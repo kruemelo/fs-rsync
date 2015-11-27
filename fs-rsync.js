@@ -16,14 +16,56 @@
   'use strict';
 
   var RPC = FSRPC.Client;
-
-// console.log('FSRSYNC FSRPC ?', FSRPC ? 'OK ' + (typeof FSRPC) : 'MISSING!');
     
   var FSRSYNC = function () {};
 
-  FSRSYNC.getFSRPC = function () {
-    return FSRPC;
+
+  FSRSYNC.base64ToArrayBuffer = function (base64Str) {
+
+    var map = {'43': 62,'47': 63,'48': 52,'49': 53,'50': 54,'51': 55,'52': 56,'53': 57,'54': 58,'55': 59,'56': 60,'57': 61,'66': 1,'67': 2,'68': 3,'69': 4,'70': 5,'71': 6,'72': 7,'73': 8,'74': 9,'75': 10,'76': 11,'77': 12,'78': 13,'79': 14,'80': 15,'81': 16,'82': 17,'83': 18,'84': 19,'85': 20,'86': 21,'87': 22,'88': 23,'89': 24,'90': 25,'97': 26,'98': 27,'99': 28,'100': 29,'101': 30,'102': 31,'103': 32,'104': 33,'105': 34,'106': 35,'107': 36,'108': 37,'109': 38,'110': 39,'111': 40,'112': 41,'113': 42,'114': 43,'115': 44,'116': 45,'117': 46,'118': 47,'119': 48,'120': 49,'121': 50,'122': 51},
+      strLenght = base64Str.length, 
+      bufferLength = base64Str.length * 0.75,
+      arraybuffer,
+      bytes,
+      stringIndex = 0, 
+      byteIndex = 0,
+      byte0, 
+      byte1, 
+      byte2, 
+      byte3;
+
+    if (base64Str[strLenght - 1] === '=') {
+      bufferLength--;
+      if (base64Str[strLenght - 2] === '=') {
+        bufferLength--;
+      }
+    }
+
+    arraybuffer = new ArrayBuffer(bufferLength);
+    bytes = new Uint8Array(arraybuffer);
+
+    for (; stringIndex < strLenght; stringIndex += 4) {
+      byte0 = map[base64Str.charCodeAt(stringIndex)] || 0;
+      byte1 = map[base64Str.charCodeAt(stringIndex + 1) || 0];
+      byte2 = map[base64Str.charCodeAt(stringIndex + 2) || 0];
+      byte3 = map[base64Str.charCodeAt(stringIndex + 3) || 0];
+
+      bytes[byteIndex++] = (byte0 << 2) | (byte1 >> 4);
+      bytes[byteIndex++] = ((byte1 & 15) << 4) | (byte2 >> 2);
+      bytes[byteIndex++] = ((byte2 & 3) << 6) | (byte3 & 63);
+    }
+
+    return arraybuffer;
+  
+  };  // base64ToArrayBuffer
+
+
+  // optional encodings: 'utf-8' (default), 'utf-16le', 'macintosh'
+  FSRSYNC.arrayBufferToString = function (buffer, encoding) {
+    encoding = encoding || 'utf-8';
+    return (new TextDecoder(encoding)).decode(new DataView(buffer));
   };
+
 
   // list remote dir content and stats
   FSRSYNC.remoteList = function (connection, options, callback) {
@@ -63,7 +105,7 @@
 
 // console.log('remoteReadFile', filename);
 
-    var fileContent = '';
+    var base64FileContent = '';
 
     if ('undefined' === typeof callback) {
       callback = options;
@@ -91,7 +133,8 @@
         function (err, result) {
 
           var parsed,
-            readResult;
+            readResult,
+            arrayBuffer;
 
           if (err) { callback(err); return; }
 
@@ -106,7 +149,7 @@
                 err = readResult[0];
               }
               else if (readResult && 'string' === typeof readResult.content) {
-                fileContent += RPC.atob(readResult.content);
+                base64FileContent += readResult.content;
               }
             }
           }
@@ -114,8 +157,12 @@
             err = e;
           }
 
-          if (readResult && readResult.EOF || err) {
-            callback.apply(null, [err || null, err ? undefined : fileContent]);            
+          if (err) {
+            callback(err);            
+          }
+          else if (readResult && readResult.EOF) {
+            arrayBuffer = FSRSYNC.base64ToArrayBuffer(base64FileContent);
+            callback(null, arrayBuffer);            
           }
           else {
             // next chunk
@@ -126,8 +173,6 @@
     } // readFileChunk
 
     readFileChunk(1);
-
-
 
   };  // FSRSYNC.remoteReadFile
 

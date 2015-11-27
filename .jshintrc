@@ -20,6 +20,8 @@
     "ArrayBuffer": true,
     "Uint8Array": true,
     "Uint16Array": true,
+    "TextDecoder": true,
+    "DataView": true,
     "escape": true,
     "setTimeout": true,
     "atob": true,

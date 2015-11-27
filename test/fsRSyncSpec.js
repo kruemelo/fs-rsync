@@ -60,26 +60,12 @@ describe('fs-rsync', function () {
   });
 
 
-  it('convert string to ArrayBuffer to string', function () {
+  it('convert base64 string to ArrayBuffer', function () {
 
-    var FSRPC,
-      content = 'buffer \u00bd + \u00bc = \u00be test',
-      buffer,
-      toStr;
-
-    assert.isFunction(rsync.getFSRPC);
-
-    FSRPC = rsync.getFSRPC();
-
-    assert.isObject(FSRPC);
-
-    buffer = FSRPC.stringToArrayBuffer(content);
+    var buffer = rsync.base64ToArrayBuffer('ZmlsZTAgY29udGVudA==');
 
     assert.instanceOf(buffer, ArrayBuffer);
-
-    toStr = FSRPC.arrayBufferToString(buffer);
-
-    assert.strictEqual(toStr, content);
+    assert.strictEqual(buffer.byteLength, 13);
 
   });
 
@@ -93,7 +79,7 @@ describe('fs-rsync', function () {
       function (err, data) {
 
         assert.isNull(err, 'should not have an error');
-        assert.strictEqual(data.length, 3449, 'file content length');
+        assert.strictEqual(data.byteLength, 3465, 'file content length');
 
         done();
       }
@@ -147,7 +133,9 @@ describe('fs-rsync', function () {
       rsync.syncDir(fsrcon, options, function () {
 
         assert.strictEqual(
-          browserfs.readFileSync('/file2', {encoding: true}),
+          rsync.arrayBufferToString(
+            browserfs.readFileSync('/file2')
+          ),
           '½ + ¼ = ¾',
           'equal file contents'
         );

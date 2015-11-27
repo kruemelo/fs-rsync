@@ -16,11 +16,17 @@
             font-style: italic;
             color: #ccc;
         }
-        #fileList li{
-          cursor: pointer;
+        #fileList li {
+          /*cursor: pointer;*/
           line-height: 27px;
           font-size: 20px;
         }
+
+        #fileList li button {
+            position: relative;
+            float: right;
+        }        
+
         </style>
         <script>
 
@@ -29,6 +35,7 @@
         var inputCWD;
         var btnCD;
         var btnSync;
+        var btnUp;
         var fileListEl;
         var dropzone;
 
@@ -37,6 +44,7 @@
           inputCWD = document.getElementById('inputCWD');
           btnCD = document.getElementById('btnCD');
           btnSync = document.getElementById('btnSync');
+          btnUp = document.getElementById('btnUp');
           fileListEl = document.getElementById('fileList');
           dropzone = document.getElementById('dropzone');
           
@@ -50,6 +58,9 @@
             cd(inputCWD.value);
           });
 
+          btnUp.addEventListener('click', function () {
+            cd(fs.dirname(cwd));
+          });
         };
 
         function preventDefault (ev) {
@@ -83,7 +94,8 @@
           fs.readdirSync(cwd).forEach(function (filename) {
 
             var fileEl = document.createElement('li'),
-              fileStats = fs.statSync(fs.joinPath(cwd, filename));
+              fileStats = fs.statSync(fs.joinPath(cwd, filename)),
+              btnEl;
 
             fileEl.textContent = (fileStats.isDirectory() ? 'd' : '-')
               + ' ' + filename 
@@ -91,20 +103,33 @@
               + ' ' + fs.fileSizeIEC(fileStats.size);
   
             if (fileStats.isDirectory()) {
-              fileEl.addEventListener('click', function () {
-                  cd(fs.joinPath(cwd,filename));
-                  syncCwd();
+              btnEl = document.createElement('button');
+              btnEl.innerText = 'cd';
+              btnEl.addEventListener('click', function () {
+                cd(fs.joinPath(cwd,filename));
+                syncCwd();
               });
+              fileEl.appendChild(btnEl);
             }
             else {
-              fileEl.addEventListener('click', function () {
+              btnEl = document.createElement('button');
+              btnEl.innerText = 'download';
+              btnEl.addEventListener('click', function () {
                 downloadFile(fs.joinPath(cwd,filename));                
               });
+              fileEl.appendChild(btnEl);
+
+              btnEl = document.createElement('button');
+              btnEl.innerText = 'console.log';
+              btnEl.addEventListener('click', function () {
+                consoleLogFile(fs.joinPath(cwd,filename));                
+              });
+              fileEl.appendChild(btnEl);              
             }
 
-          fileListEl.appendChild(fileEl);
+            fileListEl.appendChild(fileEl);
 
-            console.log('readdir filename', filename);
+            // console.log('readdir filename', filename);
           });
         }
 
@@ -132,6 +157,20 @@
 
           fileEl.textContent = filename + ' ' + fileStats.mtime + ' ' + fs.fileSizeIEC(fileStats.size);
           ls();
+        }
+
+        function consoleLogFile (filename) {
+          fs.readFile(filename, function (err, buffer) {
+            if (err) {
+                console.error(err);
+                return;
+            }
+            else {
+              console.log(filename, buffer.byteLength);
+              // encodings: 'utf-8' (default), 'utf-16le', 'macintosh'
+              console.log(rsync.arrayBufferToString(buffer, 'utf-8'));
+            }
+          });          
         }
 
         function downloadFile (filename) {
@@ -197,6 +236,7 @@
       <div id="cwd">
         <input type="text" id="inputCWD" value="/">
         <input type="button" id="btnCD" value="cd">
+        <input type="button" id="btnUp" value="cd ..">
         <input type="button" id="btnSync" value="sync">
       </div>
       <ol id="fileList"></ol>
