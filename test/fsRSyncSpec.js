@@ -118,7 +118,7 @@ describe('fs-rsync', function () {
         done();
       });
 
-    });
+    }); // sync all files to a local directory from remote
 
 
     it('should sync file contents', function (done) {
@@ -200,6 +200,37 @@ describe('fs-rsync', function () {
       });
 
     });
+
+  
+    it('should sync all files from local directory to remote fs directory', function (done) {
+
+      var browserfs = new BROWSERFS(),
+        path = '/',
+        filename = '/local file ' + (new Date()).getTime(),
+        options,
+        fileNode;
+
+      assert.isFunction(rsync.syncDir);
+
+      options = {
+        fs: browserfs,
+        path: path
+      };
+
+      // create local file
+      browserfs.writeFileSync(filename, 'local file content');
+      fileNode = browserfs.getNode(filename);
+      assert.isUndefined(fileNode.remoteStats);
+
+      rsync.syncDir(fsrcon, options, function () {
+        
+        assert.isObject(fileNode.remoteStats);
+
+        done();
+      });
+
+    }); // sync all files from local directory to remote
+
 
   }); // describe synchronizing file systems
 

@@ -107,7 +107,7 @@
               btnEl.innerText = 'cd';
               btnEl.addEventListener('click', function () {
                 cd(fs.joinPath(cwd,filename));
-                syncCwd();
+                // syncCwd();
               });
               fileEl.appendChild(btnEl);
             }
@@ -140,9 +140,14 @@
               (function (file) {
                 var reader = new FileReader();
                 reader.onload = function (evt) {
-                    fs.writeFile(file.name, evt.target.result, function (err, result) {
-                      appendFile(err || file.name);
-                    });
+                    var filename = fs.joinPath(cwd,file.name);
+                    fs.writeFile(
+                      filename, 
+                      evt.target.result, 
+                      function (err) {
+                        appendFile(err || filename);
+                      }
+                    );
                 }
                 reader.readAsArrayBuffer(file);
               })(files[i]);

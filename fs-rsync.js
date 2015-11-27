@@ -19,11 +19,51 @@
     
   var FSRSYNC = function () {};
 
+  var base64Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+  var base64CharCodeMap = (function () {
+      var map = {},
+        charCode,
+        i = 0,
+        to = base64Chars.length;
+
+      while (i < to){
+        charCode = base64Chars.charCodeAt(i);
+        if (charCode) {
+          map[charCode] = i;          
+        }
+        ++i;
+      }
+      return map;
+    })();
+
+  FSRSYNC.arrayBufferToBase64 = function (arrayBuffer) {
+
+    var bytes = new Uint8Array(arrayBuffer),
+      i = 0, 
+      len = bytes.length, 
+      base64 = '';
+
+    for (; i < len; i+=3) {
+      base64 += base64Chars[bytes[i] >> 2];
+      base64 += base64Chars[((bytes[i] & 3) << 4) | (bytes[i + 1] >> 4)];
+      base64 += base64Chars[((bytes[i + 1] & 15) << 2) | (bytes[i + 2] >> 6)];
+      base64 += base64Chars[bytes[i + 2] & 63];
+    }
+
+    if ((len % 3) === 2) {
+      base64 = base64.substring(0, base64.length - 1) + '=';
+    } else if (len % 3 === 1) {
+      base64 = base64.substring(0, base64.length - 2) + '==';
+    }
+
+    return base64;
+  };  // arrayBufferToBase64
+
 
   FSRSYNC.base64ToArrayBuffer = function (base64Str) {
 
-    var map = {'43': 62,'47': 63,'48': 52,'49': 53,'50': 54,'51': 55,'52': 56,'53': 57,'54': 58,'55': 59,'56': 60,'57': 61,'66': 1,'67': 2,'68': 3,'69': 4,'70': 5,'71': 6,'72': 7,'73': 8,'74': 9,'75': 10,'76': 11,'77': 12,'78': 13,'79': 14,'80': 15,'81': 16,'82': 17,'83': 18,'84': 19,'85': 20,'86': 21,'87': 22,'88': 23,'89': 24,'90': 25,'97': 26,'98': 27,'99': 28,'100': 29,'101': 30,'102': 31,'103': 32,'104': 33,'105': 34,'106': 35,'107': 36,'108': 37,'109': 38,'110': 39,'111': 40,'112': 41,'113': 42,'114': 43,'115': 44,'116': 45,'117': 46,'118': 47,'119': 48,'120': 49,'121': 50,'122': 51},
-      strLenght = base64Str.length, 
+    var strLenght = base64Str.length, 
       bufferLength = base64Str.length * 0.75,
       arraybuffer,
       bytes,
@@ -45,10 +85,10 @@
     bytes = new Uint8Array(arraybuffer);
 
     for (; stringIndex < strLenght; stringIndex += 4) {
-      byte0 = map[base64Str.charCodeAt(stringIndex)] || 0;
-      byte1 = map[base64Str.charCodeAt(stringIndex + 1) || 0];
-      byte2 = map[base64Str.charCodeAt(stringIndex + 2) || 0];
-      byte3 = map[base64Str.charCodeAt(stringIndex + 3) || 0];
+      byte0 = base64CharCodeMap[base64Str.charCodeAt(stringIndex)] || 0;
+      byte1 = base64CharCodeMap[base64Str.charCodeAt(stringIndex + 1) || 0];
+      byte2 = base64CharCodeMap[base64Str.charCodeAt(stringIndex + 2) || 0];
+      byte3 = base64CharCodeMap[base64Str.charCodeAt(stringIndex + 3) || 0];
 
       bytes[byteIndex++] = (byte0 << 2) | (byte1 >> 4);
       bytes[byteIndex++] = ((byte1 & 15) << 4) | (byte2 >> 2);
@@ -92,6 +132,56 @@
     );    
 
   };  // FSRSYNC.remoteStat
+
+
+  FSRSYNC.remoteWriteFile = function (connection, filename, data, options, callback) {
+
+    var chunkSize,
+      chunksToSend;
+
+    if ('undefined' === typeof callback) {
+      callback = options;
+      options = {};
+    }
+
+    options = options || {};
+
+    chunkSize = options.chunkSize || 1024 * 128;
+    chunksToSend = Math.ceil(data.byteLength / chunkSize);
+
+    function writeFileChunked (chunk) {
+
+      var start = (chunk - 1) * chunkSize,
+        end = start + chunkSize, 
+        bufferChunk = data.slice(start, end),
+        base64Data = FSRSYNC.arrayBufferToBase64(bufferChunk);
+
+      // console.log('writeFileChunked ', chunk, ' of ' + chunksToSend);
+
+      connection.send(
+        // filename, data, options, callback
+        RPC.stringify('writeFileChunked', [filename, base64Data, options]), 
+        'rpc',
+        function (err) {
+          if (err) {
+            callback(err);            
+          }
+          else if (chunk >= chunksToSend) {
+            // return remote stats with callback
+            FSRSYNC.remoteStat(connection, {filename: filename}, callback);            
+          }
+          else {
+            // write next chunk
+            writeFileChunked(chunk + 1);
+          }
+        }
+      );    
+    } // writeFileChunked
+
+    // write first chunk
+    writeFileChunked(1);
+
+  };
 
 
   FSRSYNC.remoteReadFile = function (connection, filename, options, callback) {
@@ -250,8 +340,6 @@
 
   
   FSRSYNC.syncDir = function (connection, options, callback) {
-
-    // return callback(new Error('not implemented'));
       
     var localFS = options.fs,
       path = options.path;
@@ -260,13 +348,8 @@
       path = path + '/';
     }
 
-    function handleRemoteList (err, remoteList) {
-      
-      var localList = FSRSYNC.localList(localFS, path);
-      if (err) { return callback(err); }
-// console.log('localList', localList, 'remoteList', remoteList);
+    function loopRemoteFiles (localList, remoteList, loopRemoteFilesCallback) {
 
-      // loop remote files
       FSRSYNC.eachAsync(
         Object.keys(remoteList),
         function (remoteFilename, done) {
@@ -290,16 +373,124 @@
           }
 
         },
-        function (err) {
-          callback (err, path);
-        }
+        loopRemoteFilesCallback
       );
+    } // loopRemoteFiles
+
+
+    function loopLocalFiles (localList, remoteList, loopLocalFilesCallback) {
+
+      FSRSYNC.eachAsync(
+        Object.keys(localList),
+        function (localFilename, done) {
+
+          var localStats = localList[localFilename],
+            localNode = localFS.getNode(path + localFilename);
+          
+          if (!remoteList[localFilename] && !localNode.remoteStats) {
+            // new file created on local fs 
+            FSRSYNC.createRemote(
+              {
+                filename: path + localFilename,
+                localStats: localStats,
+                localFS: localFS,
+                connection: connection
+              }, 
+              done
+            );
+          }
+          else {
+            done();            
+          }
+
+        },
+        loopLocalFilesCallback
+      );
+    } // loopLocalFiles
+
+
+    function handleRemoteList (remoteList, handleRemoteListDone) {
+      
+      var localList = FSRSYNC.localList(localFS, path);
+
+      // loop remote files
+      loopRemoteFiles(localList, remoteList, function (err) {
+        if (err) { return handleRemoteListDone(err); }
+        loopLocalFiles(localList, remoteList, handleRemoteListDone);
+      });
 
     } // handleRemoteList
 
-    FSRSYNC.remoteList(connection, {path: path}, handleRemoteList);
+
+    // get remote dir stats list
+    FSRSYNC.remoteList(connection, {path: path}, function (err, remoteList) {
+      if (err) { return callback(err); }
+      handleRemoteList(remoteList, function (err) {
+        callback(err || null, path);
+      });
+    });
 
   };  // FSRSYNC.syncDir
+
+
+  FSRSYNC.createRemote = function (options, callback) {
+
+    var filename = options.filename,
+      localStats = options.localStats,
+      localFS = options.localFS,
+      connection = options.connection;
+
+    if (localStats.isDirectory()) {
+      // create the directory on remote
+      FSRSYNC.createRemoteDir({
+        connection: connection,
+        localFS: localFS,
+        path: filename
+      }, callback);
+    }
+    else {
+      // create file on remote 
+      FSRSYNC.createRemoteFile({
+        connection: connection,
+        localFS: localFS,
+        filename: filename,
+        localContent: localFS.readFileSync(filename)
+      }, callback);
+    }
+  };  // createRemote
+
+  FSRSYNC.createRemoteDir = function (options, callback) {
+    // connection: connection,
+    // localFS: localFS,
+    // path: filename
+    callback(new Error('not implemented'));
+  };  // createRemoteDir
+
+  FSRSYNC.createRemoteFile = function (options, callback) {
+
+    var connection = options.connection,
+      localFS = options.localFS,
+      filename = options.filename,
+      localContent = options.localContent;
+
+    FSRSYNC.remoteWriteFile(
+      connection, 
+      filename, 
+      localContent, 
+      options, 
+      function (err, remoteStats) {
+
+        var localFileNode;        
+        
+        if (err) { return callback(err); }
+
+        localFileNode = localFS.getNode(filename);
+        localFileNode.remoteStats = remoteStats;
+
+        callback(null);
+      }
+    );
+  };  // createLocalFile
 
 
   FSRSYNC.createLocal = function (options, callback) {
@@ -338,7 +529,7 @@
         }
       );
     }
-  };
+  };  // createLocal
 
 
   FSRSYNC.createLocalDir = function (options, callback ) {
@@ -371,7 +562,7 @@
       callback();
     });
 
-  };
+  };  // createLocalDir
 
   FSRSYNC.createLocalFile = function (options, callback) {
 
