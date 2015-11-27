@@ -60,13 +60,6 @@
   };  // base64ToArrayBuffer
 
 
-  // optional encodings: 'utf-8' (default), 'utf-16le', 'macintosh'
-  FSRSYNC.arrayBufferToString = function (buffer, encoding) {
-    encoding = encoding || 'utf-8';
-    return (new TextDecoder(encoding)).decode(new DataView(buffer));
-  };
-
-
   // list remote dir content and stats
   FSRSYNC.remoteList = function (connection, options, callback) {
 

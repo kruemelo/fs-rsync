@@ -133,9 +133,7 @@ describe('fs-rsync', function () {
       rsync.syncDir(fsrcon, options, function () {
 
         assert.strictEqual(
-          rsync.arrayBufferToString(
-            browserfs.readFileSync('/file2')
-          ),
+          browserfs.readFileSync('/file2', 'utf8'),
           '½ + ¼ = ¾',
           'equal file contents'
         );

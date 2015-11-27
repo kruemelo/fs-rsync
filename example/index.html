@@ -160,15 +160,15 @@
         }
 
         function consoleLogFile (filename) {
-          fs.readFile(filename, function (err, buffer) {
+          // encodings: 'null' (buffer, default), 'utf8', 'utf16le', 'macintosh'
+          fs.readFile(filename, 'utf8', function (err, data) {
             if (err) {
                 console.error(err);
                 return;
             }
             else {
-              console.log(filename, buffer.byteLength);
-              // encodings: 'utf-8' (default), 'utf-16le', 'macintosh'
-              console.log(rsync.arrayBufferToString(buffer, 'utf-8'));
+              console.log(filename, data.length);
+              console.log(data);
             }
           });          
         }
