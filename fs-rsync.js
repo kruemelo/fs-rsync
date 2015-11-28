@@ -134,6 +134,23 @@
   };  // FSRSYNC.remoteStat
 
 
+  FSRSYNC.remoteMkdir = function (connection, path, callback) {
+
+      connection.send(
+        // filename, data, options, callback
+        RPC.stringify('mkdir', [path]), 
+        'rpc',
+        function (err) {
+          if (err) {
+            return callback(err);  
+          }
+            // return remote stats with callback
+            FSRSYNC.remoteStat(connection, {filename: path}, callback);            
+        }
+      );    
+  };
+
+
   FSRSYNC.remoteWriteFile = function (connection, filename, data, options, callback) {
 
     var chunkSize,
@@ -459,12 +476,29 @@
     }
   };  // createRemote
 
+
   FSRSYNC.createRemoteDir = function (options, callback) {
-    // connection: connection,
-    // localFS: localFS,
-    // path: filename
-    callback(new Error('not implemented'));
+    var connection = options.connection,
+      localFS = options.localFS,
+      path = options.path;
+
+    FSRSYNC.remoteMkdir(
+      connection, 
+      path,
+      function (err, remoteStats) {
+
+        var localFileNode;        
+        
+        if (err) { return callback(err); }
+
+        localFileNode = localFS.getNode(path);
+        localFileNode.remoteStats = remoteStats;
+
+        callback(null);
+      }
+    );
   };  // createRemoteDir
+
 
   FSRSYNC.createRemoteFile = function (options, callback) {
 

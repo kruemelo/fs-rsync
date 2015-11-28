@@ -206,7 +206,7 @@ describe('fs-rsync', function () {
 
       var browserfs = new BROWSERFS(),
         path = '/',
-        filename = '/local file ' + (new Date()).getTime(),
+        filename,
         options,
         fileNode;
 
@@ -217,16 +217,39 @@ describe('fs-rsync', function () {
         path: path
       };
 
-      // create local file
-      browserfs.writeFileSync(filename, 'local file content');
+      // create local directory
+      filename = '/local dir ' + (new Date()).getTime();
+      browserfs.mkdirpSync(filename);
       fileNode = browserfs.getNode(filename);
+      
       assert.isUndefined(fileNode.remoteStats);
 
-      rsync.syncDir(fsrcon, options, function () {
+      rsync.syncDir(fsrcon, options, function (err) {
         
-        assert.isObject(fileNode.remoteStats);
+        assert.isNull(err, 'should not have an error');
 
-        done();
+        // check remote dir
+        assert.isObject(fileNode.remoteStats, 'dir remote stats');
+
+        // create local file
+        filename += '/local file ' + (new Date()).getTime();
+        browserfs.writeFileSync(filename, 'local file content');
+        fileNode = browserfs.getNode(filename);
+        
+        assert.isUndefined(fileNode.remoteStats);
+
+        options.path = browserfs.dirname(filename);
+
+        rsync.syncDir(fsrcon, options, function (err) {
+          
+          assert.isNull(err, 'should not have an error');
+
+          // check remote file
+          assert.isObject(fileNode.remoteStats, 'file remote stats');
+
+          done();
+        });
+
       });
 
     }); // sync all files from local directory to remote
