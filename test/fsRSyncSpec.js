@@ -202,7 +202,7 @@ describe('fs-rsync', function () {
     });
 
   
-    it('should sync all files from local directory to remote fs directory', function (done) {
+    it('should sync all new files from local directory to remote fs directory', function (done) {
 
       var browserfs = new BROWSERFS(),
         path = '/',
@@ -252,7 +252,7 @@ describe('fs-rsync', function () {
 
       });
 
-    }); // sync all files from local directory to remote
+    }); // sync all new files from local directory to remote
 
 
   }); // describe synchronizing file systems

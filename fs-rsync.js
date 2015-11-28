@@ -404,17 +404,30 @@
           var localStats = localList[localFilename],
             localNode = localFS.getNode(path + localFilename);
           
-          if (!remoteList[localFilename] && !localNode.remoteStats) {
-            // new file created on local fs 
-            FSRSYNC.createRemote(
-              {
-                filename: path + localFilename,
-                localStats: localStats,
-                localFS: localFS,
-                connection: connection
-              }, 
-              done
-            );
+          if (!remoteList[localFilename]) {
+            // local file is not on remote
+
+            if (localNode.remoteStats) {
+              // file deleted on remote fs 
+              if (localStats.isDirectory()) {
+                localFS.rmdir(path + localFilename, done);
+              }
+              else {
+                localFS.unlink(path + localFilename, done);
+              }
+            }
+            else {
+              // new file created on local fs 
+              FSRSYNC.createRemote(
+                {
+                  filename: path + localFilename,
+                  localStats: localStats,
+                  localFS: localFS,
+                  connection: connection
+                }, 
+                done
+              );
+            }
           }
           else {
             done();            

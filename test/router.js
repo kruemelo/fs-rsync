@@ -73,7 +73,7 @@ router.post('/rpc', function (req, res, next) {
     rcon = connections[reqSID];
 
   if (!rcon) {
-    res.status(500).end('ECON');
+    res.status(403).end('ECON');
     next(new Error('ECON'));
     return;
   }
