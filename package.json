@@ -26,7 +26,7 @@
     "jquery": "^2.1.4",
     "mocha": "^2.3.4",
     "node-browserfs": "^1.4.2",
-    "rpc-fs": "^0.3.2"
+    "rpc-fs": "^0.3.3"
   },
   "dependencies": {
     "fs-rcon": "^2.0.3",

@@ -152,7 +152,8 @@
   FSRSYNC.remoteWriteFile = function (connection, filename, data, options, callback) {
 
     var chunkSize,
-      chunksToSend;
+      chunksToSend,
+      optionsWriteFile = {};
 
     if ('undefined' === typeof callback) {
       callback = options;
@@ -171,11 +172,13 @@
         bufferChunk = data.slice(start, end),
         base64Data = FSRSYNC.arrayBufferToBase64(bufferChunk);
 
+      optionsWriteFile.chunk = chunk;
+
       // console.log('writeFileChunked ', chunk, ' of ' + chunksToSend);
 
       connection.send(
         // filename, data, options, callback
-        RPC.stringify('writeFileChunked', [filename, base64Data, options]), 
+        RPC.stringify('writeFileChunked', [filename, base64Data, optionsWriteFile]), 
         'rpc',
         function (err) {
           if (err) {
@@ -200,7 +203,8 @@
 
   FSRSYNC.remoteReadFile = function (connection, filename, options, callback) {
 
-    var base64FileContent = '';
+    var base64FileContent = '',
+      optionsReadFile = {};
 
     if ('undefined' === typeof callback) {
       callback = options;
@@ -209,7 +213,7 @@
 
     options = options || {};
 
-    options.chunkSize = options.chunkSize || 1024 * 128;
+    optionsReadFile.chunkSize = options.chunkSize = options.chunkSize || 1024 * 128;
 
     function readFileChunk (chunk) {
 
@@ -220,10 +224,10 @@
       // callback: (err, result)
       // result: {chunk: 1, EOF: true, content: 'base64', chunkSize: 128k, stats: {}}
 
-      options.chunk = chunk;
+      optionsReadFile.chunk = chunk;
 
       connection.send(
-        RPC.stringify('readFileChunked', [filename, options]), 
+        RPC.stringify('readFileChunked', [filename, optionsReadFile]), 
         'rpc',
         function (err, result) {
 
