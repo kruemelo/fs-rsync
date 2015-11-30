@@ -69,12 +69,7 @@
         }
 
         function syncCwd () {
-          var options = {
-              fs: fs,
-              path: cwd
-            };
-
-          rsync.syncDir(rcon, options, function (err) {
+          rsync.syncDir(cwd, function (err) {
             if (err) {
               console.error(err);
             }
@@ -165,7 +160,8 @@
         }
 
         function consoleLogFile (filename) {
-          // encodings: 'null' (buffer, default), 'utf8', 'utf16le', 'macintosh'
+          // encodings: 'null' (buffer, default), 'utf8', 'utf16le'
+          // TextEncoder/TextDecoder polyfill: https://github.com/inexorabletash/text-encoding
           fs.readFile(filename, 'utf8', function (err, data) {
             if (err) {
                 console.error(err);
@@ -213,13 +209,13 @@
           function (
             browserfs, 
             _saveAs, 
-            _rsync,
+            FSRSYNC,
             _rcon
           ) {
           fs = new browserfs();
           saveAs = _saveAs;
-          rsync = _rsync;
           rcon = _rcon.Client();
+          rsync = new FSRSYNC(fs, rcon);
 
           rcon.init({port: 3000}, function (err) {
             if (err) {

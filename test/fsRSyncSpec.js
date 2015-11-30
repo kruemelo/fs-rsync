@@ -1,33 +1,39 @@
 var assert = chai.assert;
 var FSRCON = window.FSRCON;
 var BROWSERFS = window.browserfs;
-var rsync = window.FSRSYNC;
+var FSRSYNC = window.FSRSYNC;
+var browserFs;
+var connection;
+var rsync;
+
+function initialize () {
+  
+  browserFs = new BROWSERFS();  
+  connection = FSRCON.Client();
+  
+  return new window.FSRSYNC(browserFs, connection);
+}
 
 describe('fs-rsync', function () {
 
-  var fsrcon = FSRCON.Client();
-
   before(function (done) {
-    fsrcon.init({port: 3000}, done);
+    rsync = initialize();
+    connection.init({port: 3000}, done);
   });
 
 
   it('should have loaded module', function () {
     assert.isFunction(BROWSERFS, 'browserfs');
     assert.isObject(FSRCON, 'fs-rcon');
-    assert.isFunction(rsync, 'fs-rsync');
+    assert.isFunction(FSRSYNC, 'fs-rsync');
   });
 
 
   it('should list remote directory contents and stats', function (done) {
 
-    var options = {
-      path: '/'
-    };
-
     assert.isFunction(rsync.remoteList, 'should have a list function');
 
-    rsync.remoteList(fsrcon, options, function (err, list) {
+    rsync.remoteList('/', function (err, list) {
 
       assert.isNull(err, 'should not have an error');
 
@@ -46,11 +52,9 @@ describe('fs-rsync', function () {
 
   it('should get stats for a remote file', function (done) {
     
-    var filename = '/';
-
     assert.isFunction(rsync.remoteStat);
 
-    rsync.remoteStat(fsrcon, {filename: filename}, function (err, stats) {
+    rsync.remoteStat('/', function (err, stats) {
       assert.isNull(err, 'should not have an error');
       assert.isObject(stats, 'stats should be object');
       assert.includeMembers(Object.keys(stats), ['size', 'atime', 'mtime', 'ctime', 'birthtime']);
@@ -62,7 +66,7 @@ describe('fs-rsync', function () {
 
   it('convert base64 string to ArrayBuffer', function () {
 
-    var buffer = rsync.base64ToArrayBuffer('ZmlsZTAgY29udGVudA==');
+    var buffer = FSRSYNC.base64ToArrayBuffer('ZmlsZTAgY29udGVudA==');
 
     assert.instanceOf(buffer, ArrayBuffer);
     assert.strictEqual(buffer.byteLength, 13);
@@ -73,7 +77,6 @@ describe('fs-rsync', function () {
   it('should load a remote file with small chunks', function (done) {
 
     rsync.remoteReadFile(
-      fsrcon,
       '/file1',
       {chunkSize: 1024},
       function (err, data) {
@@ -91,29 +94,22 @@ describe('fs-rsync', function () {
 
     it('should sync all files to a local directory from remote fs directory', function (done) {
 
-      var browserfs = new BROWSERFS(),
-        path = '/',
-        options;
+      var path = '/';
 
       assert.isFunction(rsync.syncDir);
 
-      options = {
-        fs: browserfs,
-        path: path
-      };
-
-      rsync.syncDir(fsrcon, options, function (err, result) {
+      rsync.syncDir(path, function (err, result) {
 
         assert.isNull(err, 'should not have an error');
         assert.strictEqual(result, path);
-        assert.isTrue(browserfs.existsSync('/file0'), 'file should exist');
+        assert.isTrue(browserFs.existsSync('/file0'), 'file should exist');
 
-        assert.isTrue(browserfs.existsSync('/file1'), 'file should exist');
-        assert.isTrue(browserfs.existsSync('/file2'), 'file should exist');
-        assert.isTrue(browserfs.statSync('/file2').isFile(), 'file should be a file');
+        assert.isTrue(browserFs.existsSync('/file1'), 'file should exist');
+        assert.isTrue(browserFs.existsSync('/file2'), 'file should exist');
+        assert.isTrue(browserFs.statSync('/file2').isFile(), 'file should be a file');
 
-        assert.isTrue(browserfs.existsSync('/dirA'), 'directory should exist');
-        assert.isTrue(browserfs.statSync('/dirA').isDirectory(), 'file should be directory');
+        assert.isTrue(browserFs.existsSync('/dirA'), 'directory should exist');
+        assert.isTrue(browserFs.statSync('/dirA').isDirectory(), 'file should be directory');
 
         done();
       });
@@ -123,17 +119,12 @@ describe('fs-rsync', function () {
 
     it('should sync file contents', function (done) {
 
-      var browserfs = new BROWSERFS(),
-        path = '/',
-        options = {
-          fs: browserfs,
-          path: path
-        };
+      var path = '/';
 
-      rsync.syncDir(fsrcon, options, function () {
+      rsync.syncDir(path, function () {
 
         assert.strictEqual(
-          browserfs.readFileSync('/file2', 'utf8'),
+          browserFs.readFileSync('/file2', 'utf8'),
           '½ + ¼ = ¾',
           'equal file contents'
         );
@@ -147,18 +138,13 @@ describe('fs-rsync', function () {
     it('should sync stats', function (done) {
 
 
-      var browserfs = new BROWSERFS(),
-        path = '/',
-        options = {
-          fs: browserfs,
-          path: path
-        };
+      var path = '/';
 
-      rsync.syncDir(fsrcon, options, function () {
+      rsync.syncDir(path, function () {
 
         var fileNode;
 
-        fileNode = browserfs.getNode('/file0');
+        fileNode = browserFs.getNode('/file0');
 
         assert.isObject(fileNode.remoteStats, 'file node remote stats');
 
@@ -178,7 +164,7 @@ describe('fs-rsync', function () {
           'mtime'
         );
 
-        fileNode = browserfs.getNode('/dirA');
+        fileNode = browserFs.getNode('/dirA');
         assert.isObject(fileNode.remoteStats, 'dir node remote stats');
         assert.strictEqual(
           fileNode.remoteStats.birthtime,
@@ -204,27 +190,20 @@ describe('fs-rsync', function () {
   
     it('should sync all new files from local directory to remote fs directory', function (done) {
 
-      var browserfs = new BROWSERFS(),
-        path = '/',
+      var path = '/',
         filename,
-        options,
         fileNode;
 
       assert.isFunction(rsync.syncDir);
 
-      options = {
-        fs: browserfs,
-        path: path
-      };
-
       // create local directory
       filename = '/local dir ' + (new Date()).getTime();
-      browserfs.mkdirpSync(filename);
-      fileNode = browserfs.getNode(filename);
+      browserFs.mkdirpSync(filename);
+      fileNode = browserFs.getNode(filename);
       
       assert.isUndefined(fileNode.remoteStats);
 
-      rsync.syncDir(fsrcon, options, function (err) {
+      rsync.syncDir(path, function (err) {
         
         assert.isNull(err, 'should not have an error');
 
@@ -233,20 +212,20 @@ describe('fs-rsync', function () {
 
         // create local file
         filename += '/local file ' + (new Date()).getTime();
-        browserfs.writeFileSync(filename, 'local file content');
-        fileNode = browserfs.getNode(filename);
+        browserFs.writeFileSync(filename, 'local file content');
+        fileNode = browserFs.getNode(filename);
         
         assert.isUndefined(fileNode.remoteStats);
 
-        options.path = browserfs.dirname(filename);
+        path = browserFs.dirname(filename);
 
-        rsync.syncDir(fsrcon, options, function (err) {
+        rsync.syncDir(path, function (err) {
           
           assert.isNull(err, 'should not have an error');
 
           // check remote file
           assert.isObject(fileNode.remoteStats, 'file remote stats');
-
+          assert.strictEqual(fileNode.remoteStats.size, 18, 'remote file size');
           done();
         });
 
@@ -254,6 +233,7 @@ describe('fs-rsync', function () {
 
     }); // sync all new files from local directory to remote
 
+    it('should delete locally deleted files on remote fs');
 
   }); // describe synchronizing file systems
 
