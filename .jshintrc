@@ -21,6 +21,7 @@
     "Uint8Array": true,
     "Uint16Array": true,
     "TextDecoder": true,
+    "XMLHttpRequest": true,
     "DataView": true,
     "escape": true,
     "setTimeout": true,

@@ -18,8 +18,26 @@
   var RPC = FSRPC.Client;
     
   var FSRSYNC = function (localFs, connection) {
+
+    var self = this,
+      fnDone = localFs.fnDone;
+
     this.localFs = localFs;
     this.connection = connection;
+    this.deletedLocalFiles = [];
+
+    localFs.fnDone = function () {
+
+      var fnName = arguments[0],
+        info = arguments[1];
+      
+      if (-1 !== ['unlink', 'rmdir', 'rmrf'].indexOf(fnName)) {
+        self.deletedLocalFiles.push(info);
+      }
+      
+      console.log(fnName, info);
+      fnDone.apply(localFs, arguments);
+    };
   };
 
   var base64Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
@@ -276,6 +294,24 @@
   };  // FSRSYNC.remoteReadFile
 
 
+  FSRSYNC.prototype.remoteUnlink =  function (filename, callback) {
+    this.connection.send(
+      RPC.stringify('unlink', filename), 
+      'rpc',
+      callback
+    );    
+  }; // remoteUnlink
+
+
+  FSRSYNC.prototype.remoteRmrf =  function (path, callback) {
+    this.connection.send(
+      RPC.stringify('rmrf', path), 
+      'rpc',
+      callback
+    );  
+  }; // remoteRmrf
+
+
   FSRSYNC.prototype.localList = function (path) {
     
     var self = this,
@@ -370,15 +406,28 @@
         Object.keys(remoteList),
         function (remoteFilename, done) {
 
-          var remoteStats = remoteList[remoteFilename];
+          var remoteStats = remoteList[remoteFilename],
+            index;
           
           if (!localList[remoteFilename]) {
-            // new file created on remote fs 
-            self.createLocal(
-              path + remoteFilename,
-              remoteStats, 
-              done
-            );
+            // remote file does not exist in local fs
+            index = self.deletedLocalFiles.indexOf(path + remoteFilename);
+            if (-1 !== index) {
+              // deleted on local fs, also delete on remote 
+              self[remoteStats.isDirectory ? 'remoteRmrf' : 'remoteUnlink'](
+                path + remoteFilename, 
+                function (err) {
+                  if (!err) {
+                    delete self.deletedLocalFiles[index];
+                  }
+                  done(err);
+                }
+              );
+            }
+            else {
+              // new file created on remote fs 
+              self.createLocal(path + remoteFilename, remoteStats, done);
+            }
           }
           else {
             done();
@@ -421,7 +470,6 @@
           }
           else {
             // local also exists on remote..
-            // tbd
             done();            
           }
 

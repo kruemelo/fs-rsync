@@ -1,5 +1,17 @@
 var express = require('express');
 var router = express.Router();
+var path = require('path');
+
+// fs-extra 
+var fsExtra = require('fs-extra');
+
+function createTestDir (fsMountPath) {
+
+  var src = path.join(__dirname, 'fixtures', 'testFS');
+
+  fsExtra.emptyDirSync(fsMountPath);
+  fsExtra.copySync(src, fsMountPath);
+}
 
 // file system remote procedure calls module
 var FSRPC = require('fs-rpc');
@@ -12,7 +24,7 @@ var RPCFS = require('rpc-fs');
 var FSRCON = require('fs-rcon');
 
 var validatorConfig = require('./validator-config.json');
-// var mountPath = path.join(os.tmpDir(), 'fs-rsync-test');
+
 console.log('validatorConfig', validatorConfig);
 
 var connections = {};
@@ -37,6 +49,14 @@ router.use(function(req, res, next) {
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Cache-Control');
   next();
 });
+
+
+// reset mount path content
+router.get('/resetRemoteFs', function (req, res) {
+  createTestDir(req.app.fsMountPath);
+  res.status(204).end();
+});
+
 
 // initialize connections
 router.post('/init', function (req, res, next){

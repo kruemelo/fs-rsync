@@ -5,6 +5,9 @@ var FSRSYNC = window.FSRSYNC;
 var browserFs;
 var connection;
 var rsync;
+var protocol = 'http';
+var hostname = 'localhost';
+var port = 3000;
 
 function initialize () {
   
@@ -14,11 +17,48 @@ function initialize () {
   return new window.FSRSYNC(browserFs, connection);
 }
 
+function resetRemoteFs(callback) {
+    var xhr = new XMLHttpRequest(),
+      url = protocol + '://' + hostname + ':' + port + '/resetRemoteFs';
+
+    // The last parameter must be set to true to make an asynchronous request
+    xhr.open('get', url, true);
+
+    // xhr.setRequestHeader('Content-type', 'application/json');
+    // xhr.setRequestHeader('Accept', 'application/json');
+    xhr.setRequestHeader('Cache-Control', 'no-cache');
+    
+    xhr.onload = function () {
+      callback(null);
+    };
+
+    xhr.onerror = function () {
+      callback(new Error('ECON'));
+    };  
+
+    xhr.send();
+}
+
 describe('fs-rsync', function () {
 
   before(function (done) {
-    rsync = initialize();
-    connection.init({port: 3000}, done);
+    resetRemoteFs(function (err) {
+      if (err) {
+        console.error(err);
+        done();
+      }
+      else {
+        rsync = initialize();
+        connection.init(
+          {
+            protocol: protocol,
+            hostname: hostname,
+            port: port
+          }, 
+          done
+        );              
+      }
+    });
   });
 
 
@@ -233,7 +273,62 @@ describe('fs-rsync', function () {
 
     }); // sync all new files from local directory to remote
 
-    it('should delete locally deleted files on remote fs');
+    it('should delete locally deleted files on remote fs', function (done) {
+
+      var filename = '/file2',
+        fileNode;
+      
+      assert.isTrue(browserFs.existsSync(filename));
+
+      fileNode = browserFs.getNode(filename);
+
+      assert(fileNode.remoteStats);
+
+      browserFs.unlinkSync(filename);
+
+      assert.isFalse(browserFs.existsSync(filename));
+
+      rsync.syncDir('/', function (err) {
+        assert.isNull(err, 'should not have an error');
+
+        assert.isFalse(browserFs.existsSync(filename));
+        
+        done();
+      });
+
+    });
+
+    it('should delete locally deleted directory on remote fs', function (done) {
+
+      var filename = '/dirA',
+        fileNode;
+      
+      assert.isTrue(browserFs.existsSync(filename));
+
+      fileNode = browserFs.getNode(filename);
+
+      assert(fileNode.remoteStats);
+
+      assert.notInclude(rsync.deletedLocalFiles, filename);
+
+      browserFs.rmrfSync(filename);
+
+      assert.include(rsync.deletedLocalFiles, filename);
+
+      assert.isFalse(browserFs.existsSync(filename));
+
+      rsync.syncDir('/', function (err) {
+
+        assert.isNull(err, 'should not have an error');
+
+        assert.isFalse(browserFs.existsSync(filename));
+      
+        assert.notInclude(rsync.deletedLocalFiles, filename);
+
+        done();
+      });
+
+    });
 
   }); // describe synchronizing file systems
 

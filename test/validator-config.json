@@ -23,5 +23,11 @@
     {"dataTypes": ["string", "number"], "isPath": true},
     {"dataTypes": ["string"]},
     {"dataTypes": ["object", "undefined"]}
+  ],
+  "unlink": [
+    {"dataTypes": ["string"], "isPath": true}
+  ],
+  "rmrf": [
+    {"dataTypes": ["string"], "isPath": true}
   ]
 }

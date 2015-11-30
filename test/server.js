@@ -9,19 +9,6 @@ var os = require('os');
 
 app.fsMountPath = path.join(os.tmpDir(), 'fs-rsync-test');
 
-// fs-extra 
-var fsExtra = require('fs-extra');
-
-function createTestDir () {
-
-  var src = path.join(__dirname, 'fixtures', 'testFS');
-
-  fsExtra.emptyDirSync(app.fsMountPath);
-  fsExtra.copySync(src, app.fsMountPath);
-}
-
-createTestDir();
-
 // place it before app.use(app.router); for it to work
 // app.disable('x-powered-by');
 // app.set('x-powered-by', false);
