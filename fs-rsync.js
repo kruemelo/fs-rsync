@@ -35,7 +35,7 @@
         self.deletedLocalFiles.push(info);
       }
       
-      console.log(fnName, info);
+      // console.log(fnName, info);
       fnDone.apply(localFs, arguments);
     };
   };
