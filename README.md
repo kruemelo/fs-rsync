@@ -1,6 +1,6 @@
 # fs-rsync
 
-node-browserfs extension for web clients to sync with remote files
+[node-browserfs](https://github.com/kruemelo/node-browserfs) extension for web clients to sync with remote files
 
 ## constructor(fs, connection)
 
