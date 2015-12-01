@@ -82,7 +82,9 @@ rsync.syncFile('/file0', function (err) {
             if (err) {
               console.error(err);
             }
-            ..
+            fs.stat('/', function (err, files) {
+              console.log(files);
+            });
           });
         }
       });
