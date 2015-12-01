@@ -26,18 +26,20 @@
     this.connection = connection;
     this.deletedLocalFiles = [];
 
-    localFs.fnDone = function () {
+    if ('function' === typeof fnDone) {
+      localFs.fnDone = function () {
 
-      var fnName = arguments[0],
-        info = arguments[1];
-      
-      if (-1 !== ['unlink', 'rmdir', 'rmrf'].indexOf(fnName)) {
-        self.deletedLocalFiles.push(info);
-      }
-      
-      // console.log(fnName, info);
-      fnDone.apply(localFs, arguments);
-    };
+        var fnName = arguments[0],
+          info = arguments[1];
+        
+        if (-1 !== ['unlink', 'rmdir', 'rmrf'].indexOf(fnName)) {
+          self.deletedLocalFiles.push(localFs.normalizePath(info));
+        }
+        
+        // console.log(fnName, info);
+        fnDone.apply(localFs, arguments);
+      };
+    }
   };
 
   var base64Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
@@ -160,7 +162,7 @@
           return callback(err);  
         }
           // return remote stats with callback
-          self.remoteStat(path, callback);            
+          self.remoteStat(path, callback);
       }
     );    
   };  // FSRSYNC.remoteMkdir
@@ -391,6 +393,52 @@
     listPromise.then(allDone, allDone);
   };  // FSRSYNC.eachAsync
 
+
+  FSRSYNC.prototype.syncFile = function (filename, callback) {
+
+    var self = this,
+      existsOnLocal = this.localFs.existsSync(filename);
+
+    this.remoteStat(filename, function (err, remoteStats) {
+
+      if (!err && remoteStats) {
+        // file exists on remote
+        if (existsOnLocal) {
+          // exists both on local and remote fs
+          self.syncExistingFiles(
+            filename,
+            self.localFs.statSync(filename),
+            remoteStats,
+            callback
+          );
+        }
+        else {
+          // create on local fs
+          self.createLocal(
+            filename,
+            self.localFs.statSync(filename),
+            callback
+          );
+        }
+      }
+      else {
+        // file not on remote
+        if (existsOnLocal) {
+          // create on remote
+          self.createRemote(
+            filename,
+            self.localFs.statSync(filename),
+            callback
+          );
+        }
+        else {
+          // does not exist anywhere
+          callback(null);
+        }
+      }
+    });
+  };  // syncFile
+
   
   FSRSYNC.prototype.syncDir = function (path, options, callback) {
       
@@ -415,15 +463,16 @@
         function (remoteFilename, done) {
 
           var remoteStats = remoteList[remoteFilename],
-            index;
+            index,
+            filename = self.localFs.normalizePath(path + remoteFilename);
           
           if (!localList[remoteFilename]) {
             // remote file does not exist in local fs
-            index = self.deletedLocalFiles.indexOf(path + remoteFilename);
+            index = self.deletedLocalFiles.indexOf(filename);
             if (-1 !== index) {
               // deleted on local fs, also delete on remote 
               self[remoteStats.isDirectory ? 'remoteRmrf' : 'remoteUnlink'](
-                path + remoteFilename, 
+                filename, 
                 function (err) {
                   if (!err) {
                     delete self.deletedLocalFiles[index];
@@ -434,7 +483,7 @@
             }
             else {
               // new file created on remote fs 
-              self.createLocal(path + remoteFilename, remoteStats, done);
+              self.createLocal(filename, remoteStats, done);
             }
           }
           else {
@@ -495,9 +544,6 @@
 
           var localStats = localList[remoteFilename],
             remoteStats = remoteList[remoteFilename],
-            localFileNode,
-            remoteFileHasChanged,
-            localFileHasChanged,
             filename = path + remoteFilename;
           
           if (!localStats || !remoteStats) {
@@ -508,60 +554,13 @@
             return done();
           }
 
-          // file exists on local and remote fs
-          localFileNode = self.localFs.getNode(filename);
-          remoteFileHasChanged = localFileNode.remoteStats.mtime !== remoteStats.mtime;
-          localFileHasChanged = localFileNode.mtime !== localFileNode.remoteStats.mtime;
+          self.syncExistingFiles(
+            filename,
+            localStats,
+            remoteStats,
+            done
+          );
 
-          if (remoteFileHasChanged && localFileHasChanged) {
-            // file changed both on remote and local fs
-            done(new Error('ECONFLICT'));
-          }
-          else if (remoteFileHasChanged) {
-            // file only has changed on remote fs: update local file
-            self.remoteReadFile(
-              filename, 
-              function (err, data) {
-                
-                if (err) {
-                  return done(err);
-                }
-                
-                self.localFs.writeFile(filename, data, function (err) {
-
-                  if (err) { return callback(err); }      
-
-                  localFileNode.remoteStats = remoteStats;
-
-                  // update local stats
-                  localFileNode.ctime = remoteStats.birthtime;
-                  localFileNode.mtime = remoteStats.mtime;
-                  localFileNode.atime = remoteStats.atime;
-
-                  done(null);
-                });
-              }
-            );
-          }
-          else if (localFileHasChanged) {
-            // file only has changed on local fs: update remote file
-            self.localFs.readFile(filename, function (err, data) {
-              if (err) { return done(err); }
-              self.remoteWriteFile(
-                filename, 
-                data, 
-                function (err, remoteStats) {
-                  if (err) { return done(err); }
-                  localFileNode.remoteStats = remoteStats;
-                  localFileNode.mtime = remoteStats.mtime;
-                  done(null);
-                }
-              );
-            });
-          }
-          else {
-            done();
-          }
         },
         handleModifiedFilesCallback
       );
@@ -621,6 +620,70 @@
       });
     });
   };  // FSRSYNC.syncDir
+
+
+  FSRSYNC.prototype.syncExistingFiles = function (filename, localStats, remoteStats, callback) {
+
+    var self = this,
+      localFileNode,
+      remoteFileHasChanged,
+      localFileHasChanged;
+
+    // file exists on local and remote fs
+    localFileNode = self.localFs.getNode(filename);
+    remoteFileHasChanged = localFileNode.remoteStats.mtime !== remoteStats.mtime;
+    localFileHasChanged = localFileNode.mtime !== localFileNode.remoteStats.mtime;
+
+    if (remoteFileHasChanged && localFileHasChanged) {
+      // file changed both on remote and local fs
+      callback(new Error('ECONFLICT'), filename);
+    }
+    else if (remoteFileHasChanged) {
+      // file only has changed on remote fs: update local file
+      self.remoteReadFile(
+        filename, 
+        function (err, data) {
+          
+          if (err) {
+            return callback(null, filename);
+          }
+          
+          self.localFs.writeFile(filename, data, function (err) {
+
+            if (err) { return callback(err); }      
+
+            localFileNode.remoteStats = remoteStats;
+
+            // update local stats
+            localFileNode.ctime = remoteStats.birthtime;
+            localFileNode.mtime = remoteStats.mtime;
+            localFileNode.atime = remoteStats.atime;
+
+            callback(null, filename);
+          });
+        }
+      );
+    }
+    else if (localFileHasChanged) {
+      // file only has changed on local fs: update remote file
+      self.localFs.readFile(filename, function (err, data) {
+        if (err) { return callback(err,filename); }
+        self.remoteWriteFile(
+          filename, 
+          data, 
+          function (err, remoteStats) {
+            if (err) { return callback(err, filename); }
+            localFileNode.remoteStats = remoteStats;
+            localFileNode.mtime = remoteStats.mtime;
+            callback(null, filename);
+          }
+        );
+      });
+    }
+    else {
+      callback(null, filename);
+    }    
+  };  // syncExisting
 
 
   FSRSYNC.prototype.createRemote = function (filename, localStats, callback) {

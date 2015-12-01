@@ -338,6 +338,27 @@ describe('fs-rsync', function () {
       });
     });
 
+    it('should synchronize a single file', function (done) {
+      
+      var filename = '/file ' + (new Date()).getTime(),
+        fileNode;
+      
+      browserFs.writeFileSync(filename, 'file ' + filename + ' content');
+      fileNode = browserFs.getNode(filename);
+
+      assert.isUndefined(fileNode.remoteStats);
+
+      rsync.syncFile(filename, function (err) {
+        
+        assert.isNull(err, 'should not have an error');
+
+        fileNode = browserFs.getNode(filename);
+        
+        assert.isObject(fileNode.remoteStats);
+        done();
+      });
+    });
+
   }); // describe synchronizing file systems
 
 }); // describe fs-rsync

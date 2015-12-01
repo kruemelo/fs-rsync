@@ -11,12 +11,12 @@ var fs = new browserfs(),
 var rsync = new FSRSYNC(fs, connection);
 ```
 
-## syncDir(path, callback)
+## syncDir(path, [options,] callback)
 
 synchronizes a local fs with a remote fs directory
 
 ```
-rsync.syncDir('/dirA', [options], function (err) {
+rsync.syncDir('/dirA', {recursive: true}, function (err) {
   if (err) {
     console.error(err);
   }
@@ -25,6 +25,16 @@ rsync.syncDir('/dirA', [options], function (err) {
 ```
 
 options.recursive: if truthy, synchronizes the directory recursively. default false.
+
+## syncFile(filename, callback)
+
+synchronize a single file
+
+```
+rsync.syncFile('/file0', function (err) {
+  ..
+});
+```
 
 ## Example
 
