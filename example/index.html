@@ -22,9 +22,16 @@
           font-size: 20px;
         }
 
+        #fileList li:hover {
+          background-color: #eee;
+        }
+
         #fileList li button {
             position: relative;
             float: right;
+            height: 24px;
+            min-width: 50px;
+            cursor: pointer;
         }        
 
         </style>
@@ -99,7 +106,7 @@
   
             if (fileStats.isDirectory()) {
               btnEl = document.createElement('button');
-              btnEl.innerText = 'cd';
+              btnEl.textContent = 'cd';
               btnEl.addEventListener('click', function () {
                 cd(fs.joinPath(cwd,filename));
                 // syncCwd();
@@ -108,14 +115,14 @@
             }
             else {
               btnEl = document.createElement('button');
-              btnEl.innerText = 'download';
+              btnEl.textContent = 'download';
               btnEl.addEventListener('click', function () {
                 downloadFile(fs.joinPath(cwd,filename));                
               });
               fileEl.appendChild(btnEl);
 
               btnEl = document.createElement('button');
-              btnEl.innerText = 'console.log';
+              btnEl.textContent = 'console.log';
               btnEl.addEventListener('click', function () {
                 consoleLogFile(fs.joinPath(cwd,filename));                
               });
