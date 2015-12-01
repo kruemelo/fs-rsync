@@ -2,12 +2,13 @@
 
 node-browserfs extension for web clients to sync with remote files
 
-## ctor(fs, connection)
+## constructor(fs, connection)
 
 ```
 var fs = new browserfs(), 
-  connection = FSRCON.Client(),
-  rsync = new FSRSYNC(fs, connection);
+  connection = FSRCON.Client();
+..  
+var rsync = new FSRSYNC(fs, connection);
 ```
 
 ## syncDir(path, callback)
@@ -15,13 +16,15 @@ var fs = new browserfs(),
 synchronizes a local fs with a remote fs directory
 
 ```
-rsync.syncDir('/dirA', function (err) {
+rsync.syncDir('/dirA', [options], function (err) {
   if (err) {
     console.error(err);
   }
   ..
 });
 ```
+
+options.recursive: if truthy, synchronizes the directory recursively. default false.
 
 ## Example
 

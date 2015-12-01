@@ -392,9 +392,17 @@
   };  // FSRSYNC.eachAsync
 
   
-  FSRSYNC.prototype.syncDir = function (path, callback) {
+  FSRSYNC.prototype.syncDir = function (path, options, callback) {
       
-    var self = this;
+    var self = this,
+      recursive;
+
+    if ('undefined' === typeof callback) {
+      callback = options;
+      options = {};
+    }
+
+    recursive = !!options.recursive;
 
     if ('/' !== path[path.length - 1]) {
       path = path + '/';
@@ -581,7 +589,35 @@
     this.remoteList(path, function (err, remoteList) {
       if (err) { return callback(err); }
       handleRemoteList(remoteList, function (err) {
-        callback(err || null, path);
+        var dirFiles;
+        if (err) {
+          callback(err, path);
+        }
+        else {
+          if (recursive) {
+            // sync recursively
+            dirFiles = self.localList(path);
+            FSRSYNC.eachAsync(
+              Object.keys(dirFiles),
+              function (filename, dirfileDone) {
+                var stats = dirFiles[filename];
+                if (stats && stats.isDirectory()) {
+                  self.syncDir(path + filename, {recursive: true}, dirfileDone);
+                }
+                else {
+                  dirfileDone();
+                }
+              },
+              function (err) {
+                console.log('dir files done for ' + path);
+                callback(err, path);
+              }
+            );
+          }
+          else {
+            callback(null, path);
+          }
+        }
       });
     });
   };  // FSRSYNC.syncDir

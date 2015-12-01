@@ -9,15 +9,28 @@ var protocol = 'http';
 var hostname = 'localhost';
 var port = 3000;
 
-function initialize () {
+function initialize (callback) {
   
   browserFs = new BROWSERFS();  
   connection = FSRCON.Client();
-  
-  return new window.FSRSYNC(browserFs, connection);
+  rsync = new window.FSRSYNC(browserFs, connection);
+
+  connection.init(
+    {
+      protocol: protocol,
+      hostname: hostname,
+      port: port
+    }, 
+    function (err) {
+      if (err) {
+        return callback(err);
+      }
+      resetRemoteFs(callback);      
+    }
+  );        
 }
 
-function resetRemoteFs(callback) {
+function resetRemoteFs (callback) {
     var xhr = new XMLHttpRequest(),
       url = protocol + '://' + hostname + ':' + port + '/resetRemoteFs';
 
@@ -42,23 +55,7 @@ function resetRemoteFs(callback) {
 describe('fs-rsync', function () {
 
   before(function (done) {
-    resetRemoteFs(function (err) {
-      if (err) {
-        console.error(err);
-        done();
-      }
-      else {
-        rsync = initialize();
-        connection.init(
-          {
-            protocol: protocol,
-            hostname: hostname,
-            port: port
-          }, 
-          done
-        );              
-      }
-    });
+    initialize(done);
   });
 
 
@@ -328,6 +325,17 @@ describe('fs-rsync', function () {
         done();
       });
 
+    });
+
+
+    it('should synchronize recursivly', function (done) {
+      initialize(function () {
+        rsync.syncDir('/', {recursive: true}, function (err) {
+          assert.isNull(err, 'should not have an error');
+          assert.isTrue(browserFs.existsSync('/dirA/fileA'), 'sync sub dir contents');
+          done();
+        });
+      });
     });
 
   }); // describe synchronizing file systems
