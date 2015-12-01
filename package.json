@@ -1,6 +1,6 @@
 {
   "name": "fs-rsync",
-  "version": "1.4.14",
+  "version": "1.4.15",
   "description": "sync local node-browserfs with remote fs",
   "main": "fs-rsync.js",
   "keywords": [

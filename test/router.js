@@ -115,9 +115,14 @@ router.use(RPC(
       return;
     }
 
-    RPC.execute(RPCFS, rpc, function (err, result) {
-      res.end(RPC.stringify([err, result]));              
-    });
+    try {
+      RPC.execute(RPCFS, rpc, function (err, result) {
+        res.end(RPC.stringify([err, result]));              
+      });      
+    }
+    catch (e) {
+      res.end(RPC.stringify([e]));
+    }
 
   }
 ));

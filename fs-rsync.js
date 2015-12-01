@@ -493,11 +493,11 @@
             filename = path + remoteFilename;
           
           if (!localStats || !remoteStats) {
-            done();
+            return done();
           }
 
           if (localStats.isDirectory()) {
-            done();
+            return done();
           }
 
           // file exists on local and remote fs
