@@ -359,6 +359,17 @@ describe('fs-rsync', function () {
       });
     });
 
+
+    it('should synchronize remote file with unsynced local path', function (done) {
+      initialize(function () {
+        rsync.syncFile('/dirA/fileA', function (err) {
+          assert.isNull(err, 'should not have an error');
+          assert.isTrue(browserFs.existsSync('/dirA/fileA'), 'sync file without local path');
+          done();
+        });
+      });
+    });
+
   }); // describe synchronizing file systems
 
 }); // describe fs-rsync

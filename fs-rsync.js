@@ -416,7 +416,7 @@
           // create on local fs
           self.createLocal(
             filename,
-            self.localFs.statSync(filename),
+            remoteStats,
             callback
           );
         }
@@ -784,9 +784,19 @@
   };  // createLocal
 
 
+  FSRSYNC.prototype.ensureLocalPath = function (path) {
+    var localFs = this.localFs;
+    if (!localFs.existsSync(path)) {
+      localFs.mkdirpSync(path);
+    }
+  };
+
+
   FSRSYNC.prototype.createLocalDir = function (path, remoteStats, callback ) {
     
     var self = this;
+
+    this.ensureLocalPath(this.localFs.dirname(path));
 
     this.localFs.mkdir(path, function (err) {
       
@@ -819,6 +829,7 @@
     var self = this;
 
     // console.log(filename, remoteStats);
+    this.ensureLocalPath(this.localFs.dirname(filename));
 
     this.localFs.writeFile(filename, remoteContent, function (err) {
 
