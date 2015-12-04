@@ -71,23 +71,28 @@ rsync.syncFile('/file0', function (err) {
         connection = FSRCON.Client(),
         rsync = new FSRSYNC(fs, connection);
 
-      connection.init({port: 3000}, function (err) {
-        if (err) {
-          window.alert('failed to connect to server: ' + err.message);
-          console.error(err);
-        }
-        else {
-          console.info('connected');
-          rsync.syncDir('/', function (err) {
-            if (err) {
-              console.error(err);
-            }
-            fs.stat('/', function (err, files) {
-              console.log(files);
+      connection.init('fsrcon/init')
+        .then(
+          function () {
+            console.info('connected');
+
+            rsync.syncDir('/', function (err) {
+              if (err) {
+                console.error(err);
+              }
+              fs.stat('/', function (err, files) {
+                console.log(files);
+              });
             });
-          });
-        }
+
+          },
+          function (err) {
+            window.alert('failed to connect to server: ' + err.message);
+            console.error(err);
+          }
+        );
       });
+    
     });
 
     </script>
