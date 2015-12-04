@@ -10,24 +10,32 @@ var hostname = 'localhost';
 var port = 3000;
 
 function initialize (callback) {
-  
-  browserFs = new BROWSERFS();  
-  connection = FSRCON.Client();
-  rsync = new window.FSRSYNC(browserFs, connection);
 
-  connection.init(
-    {
+  var connOptions = {
       protocol: protocol,
       hostname: hostname,
-      port: port
-    }, 
-    function (err) {
-      if (err) {
-        return callback(err);
-      }
-      resetRemoteFs(callback);      
-    }
-  );        
+      port: port,
+      accountId: FSRCON.hash('email@domain.tld')
+    };
+  
+  browserFs = new BROWSERFS();  
+  connection = new FSRCON.Client(connOptions);
+  rsync = new window.FSRSYNC(browserFs, connection);
+
+  connection.init('init')
+    .then(
+      function () {
+        connection.connect('connect', 'my secret')
+          .then(
+            function () {
+              console.log('client connected to server');
+              resetRemoteFs(callback);      
+            },
+            callback
+          );
+      },
+      callback
+    );      
 }
 
 function resetRemoteFs (callback) {

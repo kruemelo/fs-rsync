@@ -217,24 +217,37 @@
             browserfs, 
             _saveAs, 
             FSRSYNC,
-            _rcon
+            FSRCON
           ) {
           fs = new browserfs();
           saveAs = _saveAs;
-          rcon = _rcon.Client();
+          rcon = new FSRCON.Client({
+            port: 3000,
+            accountId: FSRCON.hash('email@domain.tld')
+          });
           rsync = new FSRSYNC(fs, rcon);
 
-          rcon.init({port: 3000}, function (err) {
-            if (err) {
-              window.alert('failed to connect to server: ' + err.message);
-              console.error(err);
-            }
-            else {
-              console.info('connected');
-              cd(cwd);
-              // syncCwd();
-            }
-          });
+          rcon.init('init')
+            .then(
+              function () {
+                rcon.connect('connect', 'my secret')
+                  .then(
+                    function () {
+                      console.info('connected');
+                      cd(cwd);
+                      // syncCwd();
+                    },
+                    function (err) {                
+                      window.alert('failed to connect to server: ' + err.message);
+                      console.error(err);
+                    }
+                  );
+              },
+              function (err) {                
+                window.alert('failed to connect to server: ' + err.message);
+                console.error(err);
+              }
+            );
         });
 
         </script>
