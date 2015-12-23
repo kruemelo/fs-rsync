@@ -34,7 +34,7 @@ var accounts = {};
 function addAccountsTo (accounts) {
   var accountId = FSRCON.hash('email@domain.tld');
   accounts[accountId] = {
-    password: FSRCON.password('my secret', accountId),
+    password: FSRCON.passwordS1('my secret', accountId),
     fsMountPath: '/'
   };
 }
@@ -75,7 +75,7 @@ router.post('/init', function (req, res, next){
 
   var rcon = new FSRCON.Server();
   rcon.init({
-    clientRandomKey: req.body && req.body.CRK,
+    clientNonce: req.body && req.body.CN,
       clientAccountKey: req.body && req.body.CAK
   }, function (err) {
 
@@ -88,7 +88,7 @@ router.post('/init', function (req, res, next){
     connections[rcon.SID] = rcon;
 
     res.end(JSON.stringify({
-      SRK: rcon.serverRandomKey
+      SN: rcon.serverNonce
     }));
 
     next();
