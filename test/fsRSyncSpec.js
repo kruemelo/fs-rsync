@@ -9,6 +9,28 @@ var protocol = 'http';
 var hostname = 'localhost';
 var port = 3000;
 
+function resetRemoteFs (callback) {
+    var xhr = new XMLHttpRequest(),
+      url = protocol + '://' + hostname + ':' + port + '/resetRemoteFs';
+
+    // The last parameter must be set to true to make an asynchronous request
+    xhr.open('get', url, true);
+
+    // xhr.setRequestHeader('Content-type', 'application/json');
+    // xhr.setRequestHeader('Accept', 'application/json');
+    xhr.setRequestHeader('Cache-Control', 'no-cache');
+    
+    xhr.onload = function () {
+      callback(null);
+    };
+
+    xhr.onerror = function () {
+      callback(new Error('ECON'));
+    };  
+
+    xhr.send();
+}
+
 function initialize (callback) {
 
   var connOptions = {
@@ -36,28 +58,6 @@ function initialize (callback) {
       },
       callback
     );      
-}
-
-function resetRemoteFs (callback) {
-    var xhr = new XMLHttpRequest(),
-      url = protocol + '://' + hostname + ':' + port + '/resetRemoteFs';
-
-    // The last parameter must be set to true to make an asynchronous request
-    xhr.open('get', url, true);
-
-    // xhr.setRequestHeader('Content-type', 'application/json');
-    // xhr.setRequestHeader('Accept', 'application/json');
-    xhr.setRequestHeader('Cache-Control', 'no-cache');
-    
-    xhr.onload = function () {
-      callback(null);
-    };
-
-    xhr.onerror = function () {
-      callback(new Error('ECON'));
-    };  
-
-    xhr.send();
 }
 
 describe('fs-rsync', function () {

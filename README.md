@@ -106,7 +106,7 @@ rsync.syncFile('/file0', function (err) {
 start test server
 
 ```
-$ node ./test/server.js
+$ npm test
 ->  test server listening at http://127.0.0.1:3000
     open specs at url file:///home/customer/projekte/fs-rsync/test/index.html in browser
     or example at file:///home/customer/projekte/fs-rsync/example/index.html in browser
