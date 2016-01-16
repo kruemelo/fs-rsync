@@ -58,7 +58,10 @@ router.use(function(req, res, next) {
 // http://enable-cors.org/server_expressjs.html
 router.use(function(req, res, next) {
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Cache-Control');
+  res.header(
+    'Access-Control-Allow-Headers', 
+    'Origin, X-Requested-With, Content-Type, Accept, Cache-Control'
+  );
   next();
 });
 
@@ -165,6 +168,7 @@ router.post('/rpc', function (req, res, next) {
 
 });
 
+
 // decrypt request
 router.post('/rpc', function (req, res, next) {
 
@@ -188,33 +192,38 @@ router.post('/rpc', function (req, res, next) {
 
 });
 
+
+function rpcRequestHandler (validationError, rpc, req, res, next) {
+  
+  var rcon = req.fsrcon;
+  
+  if (validationError) {
+    next(validationError);
+    return;
+  }
+
+  try {
+
+    RPC.execute(RPCFS, rpc, function (err, result) {
+      res.end(FSRCON.encrypt(
+        RPC.stringify([err, result]),
+        rcon.serverHashedPassword
+      ));              
+    });      
+  }
+  catch (e) {
+    res.end(RPC.stringify([e]));
+  }
+
+}
+
+
 // apply rpc
 router.use(RPC(
   validatorConfig, 
-  function (validationError, rpc, req, res, next) {
-    
-    var rcon = req.fsrcon;
-    
-    if (validationError) {
-      next(validationError);
-      return;
-    }
-
-    try {
-
-      RPC.execute(RPCFS, rpc, function (err, result) {
-        res.end(FSRCON.encrypt(
-          RPC.stringify([err, result]),
-          rcon.serverHashedPassword
-        ));              
-      });      
-    }
-    catch (e) {
-      res.end(RPC.stringify([e]));
-    }
-
-  }
+  rpcRequestHandler
 ));
+
 
 router.use(function(err, req, res, next) {
   console.error(err.stack);
