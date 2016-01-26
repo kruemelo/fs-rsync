@@ -17,13 +17,14 @@
 
   var RPC = FSRPC.Client;
     
-  var FSRSYNC = function (localFs, connection) {
+  var FSRSYNC = function (localFs, connection, urlPathname) {
 
     var self = this,
       fnDone = localFs.fnDone;
 
     this.localFs = localFs;
     this.connection = connection;
+    this.urlPathname = urlPathname || 'rpc';
     this.deletedLocalFiles = [];
 
     if ('function' === typeof fnDone) {
@@ -125,7 +126,7 @@
 
   // get the url path name for connection.send()
   FSRSYNC.prototype.getUrlPathname = function () {
-    return 'rpc';
+    return this.urlPathname;
   };
 
   // list remote dir content and stats
