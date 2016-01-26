@@ -123,12 +123,17 @@
   };  // base64ToArrayBuffer
 
 
+  // get the url path name for connection.send()
+  FSRSYNC.prototype.getUrlPathname = function () {
+    return 'rpc';
+  };
+
   // list remote dir content and stats
   FSRSYNC.prototype.remoteList = function (path, callback) {
 
     this.connection.send(
       RPC.stringify('readdirStat', path), 
-      'rpc',
+      this.getUrlPathname(),
       function (err, result) {     
 
         if (err) { return callback(err); }
@@ -143,7 +148,7 @@
   FSRSYNC.prototype.remoteStat = function (filename, callback) {
     this.connection.send(
       RPC.stringify('stat', filename), 
-      'rpc',
+      this.getUrlPathname(),
       function (err, result) {
         callback.apply(err, RPC.parse(result));
       }
@@ -156,7 +161,7 @@
     this.connection.send(
       // filename, data, options, callback
       RPC.stringify('mkdir', [path]), 
-      'rpc',
+      this.getUrlPathname(),
       function (err) {
         if (err) {
           return callback(err);  
@@ -199,7 +204,7 @@
       self.connection.send(
         // filename, data, options, callback
         RPC.stringify('writeFileChunked', [filename, base64Data, optionsWriteFile]), 
-        'rpc',
+        self.getUrlPathname(),
         function (err) {
           if (err) {
             callback(err);            
@@ -249,7 +254,7 @@
 
       self.connection.send(
         RPC.stringify('readFileChunked', [filename, optionsReadFile]), 
-        'rpc',
+        self.getUrlPathname(),
         function (err, result) {
 
           var parsed,
@@ -299,7 +304,7 @@
   FSRSYNC.prototype.remoteUnlink =  function (filename, callback) {
     this.connection.send(
       RPC.stringify('unlink', filename), 
-      'rpc',
+      this.getUrlPathname(),
       callback
     );    
   }; // remoteUnlink
@@ -308,7 +313,7 @@
   FSRSYNC.prototype.remoteRmrf =  function (path, callback) {
     this.connection.send(
       RPC.stringify('rmrf', path), 
-      'rpc',
+      this.getUrlPathname(),
       callback
     );  
   }; // remoteRmrf
