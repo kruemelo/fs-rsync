@@ -637,8 +637,10 @@
 
     // file exists on local and remote fs
     localFileNode = self.localFs.getNode(filename);
-    remoteFileHasChanged = localFileNode.remoteStats.mtime !== remoteStats.mtime;
-    localFileHasChanged = localFileNode.mtime !== localFileNode.remoteStats.mtime;
+    remoteFileHasChanged = localFileNode.remoteStats ? 
+      localFileNode.remoteStats.mtime !== remoteStats.mtime : false;
+    localFileHasChanged = localFileNode.remoteStats ?
+      localFileNode.mtime !== localFileNode.remoteStats.mtime : true;
 
     if (remoteFileHasChanged && localFileHasChanged) {
       // file changed both on remote and local fs
