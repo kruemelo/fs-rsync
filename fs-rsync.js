@@ -449,7 +449,8 @@
   FSRSYNC.prototype.syncDir = function (path, options, callback) {
       
     var self = this,
-      recursive;
+      recursive,
+      existsOnLocal;
 
     if ('undefined' === typeof callback) {
       callback = options;
@@ -461,6 +462,9 @@
     if ('/' !== path[path.length - 1]) {
       path = path + '/';
     }
+
+    existsOnLocal = this.localFs.existsSync(path);
+
 
     function loopRemoteFiles (localList, remoteList, loopRemoteFilesCallback) {
 
@@ -590,41 +594,93 @@
     } // handleRemoteList
 
 
-    // get remote dir stats list
-    this.remoteList(path, function (err, remoteList) {
-      if (err) { return callback(err); }
-      handleRemoteList(remoteList, function (err) {
-        var dirFiles;
-        if (err) {
-          callback(err, path);
-        }
-        else {
-          if (recursive) {
-            // sync recursively
-            dirFiles = self.localList(path);
-            FSRSYNC.eachAsync(
-              Object.keys(dirFiles),
-              function (filename, dirfileDone) {
-                var stats = dirFiles[filename];
-                if (stats && stats.isDirectory()) {
-                  self.syncDir(path + filename, {recursive: true}, dirfileDone);
-                }
-                else {
-                  dirfileDone();
-                }
-              },
-              function (err) {
-                console.log('dir files done for ' + path);
-                callback(err, path);
-              }
-            );
+    function getRemoteDirStatsList (getRemoteDirStatsListCallback) {
+    
+      self.remoteList(path, function (err, remoteList) {
+        if (err) { return getRemoteDirStatsListCallback(err); }
+        handleRemoteList(remoteList, function (err) {
+          var dirFiles;
+          if (err) {
+            getRemoteDirStatsListCallback(err, path);
           }
           else {
-            callback(null, path);
+            if (recursive) {
+              // sync recursively
+              dirFiles = self.localList(path);
+              FSRSYNC.eachAsync(
+                Object.keys(dirFiles),
+                function (filename, dirfileDone) {
+                  var stats = dirFiles[filename];
+                  if (stats && stats.isDirectory()) {
+                    self.syncDir(path + filename, {recursive: true}, dirfileDone);
+                  }
+                  else {
+                    dirfileDone();
+                  }
+                },
+                function (err) {
+                  console.log('dir files done for ' + path);
+                  getRemoteDirStatsListCallback(err, path);
+                }
+              );
+            }
+            else {
+              getRemoteDirStatsListCallback(null, path);
+            }
           }
-        }
+        });
       });
+    } // get remote dir stats list
+
+
+    this.remoteStat(path, function (err, remoteStats) {
+
+      var localDirNode;
+
+      if (!err && remoteStats) {
+        // dir exists on remote
+        if (existsOnLocal) {
+          // exists both on local and remote fs
+          localDirNode = self.localFs.getNode(path);
+          localDirNode.remoteStats = remoteStats;
+          getRemoteDirStatsList(callback);
+        }
+        else {
+          // create on local fs
+          self.createLocal(
+            path,
+            remoteStats,
+            function (err) {
+              if (err) {
+                return callback(err);
+              }
+              getRemoteDirStatsList(callback);
+            }
+          );
+        }
+      }
+      else {
+        // dir not on remote
+        if (existsOnLocal) {
+          // create on remote
+          self.createRemote(
+            path,
+            self.localFs.statSync(path),
+            function (err) {
+              if (err) {
+                return callback(err);
+              }
+              getRemoteDirStatsList(callback);
+            }
+          );
+        }
+        else {
+          // does not exist anywhere
+          callback(null);
+        }
+      }
     });
+
   };  // FSRSYNC.syncDir
 
 
