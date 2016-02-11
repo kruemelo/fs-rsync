@@ -167,8 +167,8 @@
         if (err) {
           return callback(err);  
         }
-          // return remote stats with callback
-          self.remoteStat(path, callback);
+        // return remote stats with callback
+        self.remoteStat(path, callback);
       }
     );    
   };  // FSRSYNC.remoteMkdir
@@ -599,11 +599,13 @@
       self.remoteList(path, function (err, remoteList) {
         if (err) { return getRemoteDirStatsListCallback(err); }
         handleRemoteList(remoteList, function (err) {
-          var dirFiles;
+          var dirFiles, localDirNode;
           if (err) {
             getRemoteDirStatsListCallback(err, path);
           }
           else {
+            localDirNode = self.localFs.getNode(path);
+            localDirNode.remoteStats.fetched = Date.now();
             if (recursive) {
               // sync recursively
               dirFiles = self.localList(path);
@@ -670,7 +672,7 @@
               if (err) {
                 return callback(err);
               }
-              getRemoteDirStatsList(callback);
+              self.syncDir(path, options, callback);
             }
           );
         }
@@ -693,8 +695,10 @@
 
     // file exists on local and remote fs
     localFileNode = self.localFs.getNode(filename);
+
     remoteFileHasChanged = localFileNode.remoteStats ? 
       localFileNode.remoteStats.mtime !== remoteStats.mtime : false;
+    
     localFileHasChanged = localFileNode.remoteStats ?
       localFileNode.mtime !== localFileNode.remoteStats.mtime : true;
 
@@ -717,6 +721,7 @@
             if (err) { return callback(err); }      
 
             localFileNode.remoteStats = remoteStats;
+            localFileNode.remoteStats.fetched = Date.now();
 
             // update local stats
             localFileNode.ctime = remoteStats.birthtime;
@@ -738,6 +743,7 @@
           function (err, remoteStats) {
             if (err) { return callback(err, filename); }
             localFileNode.remoteStats = remoteStats;
+            localFileNode.remoteStats.fetched = Date.now();
             localFileNode.mtime = remoteStats.mtime;
             callback(null, filename);
           }
@@ -783,6 +789,7 @@
 
         localFileNode = self.localFs.getNode(path);
         localFileNode.remoteStats = remoteStats;
+        localFileNode.remoteStats.fetched = Date.now();
         localFileNode.mtime = remoteStats.mtime;
 
         callback(null);
@@ -806,6 +813,7 @@
 
         localFileNode = self.localFs.getNode(filename);
         localFileNode.remoteStats = remoteStats;
+        localFileNode.remoteStats.fetched = Date.now();
         localFileNode.mtime = remoteStats.mtime;
 
         callback(null);
@@ -872,6 +880,7 @@
 
       localDirNode = self.localFs.getNode(path);
       localDirNode.remoteStats = remoteStats;
+      localDirNode.remoteStats.fetched = false;
 
       // update local stats
       localDirNode.ctime = remoteStats.birthtime;
@@ -906,6 +915,7 @@
       localFileNode = self.localFs.getNode(filename);
 
       localFileNode.remoteStats = remoteStats;
+      localFileNode.remoteStats.fetched = time;
 
       // update local stats
       localFileNode.ctime = remoteStats.birthtime;
