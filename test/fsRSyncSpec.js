@@ -33,11 +33,13 @@ function resetRemoteFs (callback) {
 
 function initialize (callback) {
 
-  var connOptions = {
+  var accountId = FSRCON.hash('email@domain.tld'),
+    password = FSRCON.hash('my secret', accountId),
+    connOptions = {
       protocol: protocol,
       hostname: hostname,
       port: port,
-      accountId: FSRCON.hash('email@domain.tld')
+      accountId: accountId
     };
   
   browserFs = new BROWSERFS();  
@@ -47,7 +49,7 @@ function initialize (callback) {
   connection.init('init')
     .then(
       function () {
-        connection.connect('connect', 'my secret')
+        connection.connect('connect', password)
           .then(
             function () {
               console.log('client connected to server');

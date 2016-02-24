@@ -34,7 +34,7 @@ var accounts = {};
 function addAccountsTo (accounts) {
   var accountId = FSRCON.hash('email@domain.tld');
   accounts[accountId] = {
-    password: FSRCON.passwordS1('my secret', accountId),
+    password: FSRCON.hash('my secret', accountId),
     fsMountPath: '/'
   };
 }
@@ -159,6 +159,7 @@ router.post('/rpc', function (req, res, next) {
     }
     // use an account specific mount path here
     req.mountPath = path.join(req.app.fsMountPath, account.fsMountPath);
+console.log(req.mountPath, req.app.fsMountPath, account.fsMountPath);    
   }
   catch (e) {
     error = e;
@@ -203,7 +204,7 @@ function rpcRequestHandler (validationError, rpc, req, res, next) {
   }
 
   try {
-
+console.log(rpc);
     RPC.execute(RPCFS, rpc, function (err, result) {
       res.end(FSRCON.encrypt(
         RPC.stringify([err, result]),

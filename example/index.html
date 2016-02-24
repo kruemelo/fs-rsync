@@ -219,18 +219,21 @@
             FSRSYNC,
             FSRCON
           ) {
+
+          var accountId = FSRCON.hash('email@domain.tld');
+
           fs = new browserfs();
           saveAs = _saveAs;
           rcon = new FSRCON.Client({
             port: 3000,
-            accountId: FSRCON.hash('email@domain.tld')
+            accountId: accountId
           });
           rsync = new FSRSYNC(fs, rcon);
 
           rcon.init('init')
             .then(
               function () {
-                rcon.connect('connect', 'my secret')
+                rcon.connect('connect', FSRCON.hash('my secret', accountId))
                   .then(
                     function () {
                       console.info('connected');
