@@ -136,9 +136,7 @@
       RPC.stringify('readdirStat', path), 
       this.getUrlPathname(),
       function (err, result) {     
-
         if (err) { return callback(err); }
-
         callback.apply(null, RPC.parse(result));
       }
     );
@@ -151,7 +149,8 @@
       RPC.stringify('stat', filename), 
       this.getUrlPathname(),
       function (err, result) {
-        callback.apply(err, RPC.parse(result));
+        if (err) { return callback(err); }
+        callback.apply(null, RPC.parse(result));
       }
     );    
   };  // FSRSYNC.remoteStat
