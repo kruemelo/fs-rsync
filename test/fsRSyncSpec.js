@@ -348,6 +348,31 @@ describe('fs-rsync', function () {
       });
     });
 
+
+    it('should sync renamed files', function (done) {
+      
+      assert.isTrue(browserFs.existsSync('/file0'), 'file0 should exist at local fs');
+      assert.isFalse(browserFs.existsSync('/renamed'), 'renamed should not exist yet at local fs');
+      
+      browserFs.renameSync('/file0', '/dirA/renamed');
+
+      assert.isFalse(browserFs.existsSync('/file0'), 'file0 should not exist now at local fs');
+      assert.isTrue(browserFs.existsSync('/dirA/renamed'), 'renamed should now exist at local fs');
+      
+      rsync.syncDir('/', function (err) {
+  
+        assert.isNull(err, 'should not have an error');
+        assert.isFalse(browserFs.existsSync('/file0'), 'file0 should still not exist at local fs');
+  
+        rsync.syncDir('/dirA', function (err) {
+          assert.isNull(err, 'should not have an error');
+          assert.isTrue(browserFs.existsSync('/dirA/renamed'), 'renamed should still exist at local fs');
+          done();
+        });
+      });
+    });
+
+
     it('should synchronize a single file', function (done) {
       
       var filename = '/file ' + (new Date()).getTime(),

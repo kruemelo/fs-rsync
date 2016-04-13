@@ -26,6 +26,7 @@
     this.connection = connection;
     this.urlPathname = urlPathname || 'rpc';
     this.deletedLocalFiles = [];
+    this.renamedLocalFiles = [];
 
     if ('function' === typeof fnDone) {
       localFs.fnDone = function () {
@@ -35,6 +36,13 @@
         
         if (-1 !== ['unlink', 'rmdir', 'rmrf'].indexOf(fnName)) {
           self.deletedLocalFiles.push(localFs.normalizePath(info));
+        }
+        else if ('rename' === fnName) {
+          // info.newPath, info.oldPath
+          self.renamedLocalFiles.push([
+            localFs.normalizePath(info.oldPath),
+            localFs.normalizePath(info.newPath)
+          ]);
         }
         
         // console.log(fnName, info);
@@ -399,12 +407,43 @@
   };  // FSRSYNC.eachAsync
 
 
+  FSRSYNC.prototype.handleRenamedLocalFiles = function () {
+
+    var fs = this.localFs,
+      list = this.renamedLocalFiles,
+      i;
+    for (i = 0; i < list.length; ++i) {
+      var node, 
+        oldPath = list[i][0],
+        newPath = list[i][1];
+      
+      if (!fs.existsSync(oldPath)) {
+        // add old filename to deleted local files list
+        this.deletedLocalFiles.push(oldPath);
+      }
+
+      if (fs.existsSync(newPath)) {
+        node = fs.getNode(newPath);
+        // remove the remote stats property to make it a "new" file
+        delete node.remoteStats;
+      }
+    }
+
+    list.length = 0;
+    return this;
+  };
+
+
   FSRSYNC.prototype.syncFile = function (filename, callback) {
 
     var self = this,
       existsOnLocal = this.localFs.existsSync(filename);
 
+    this.handleRenamedLocalFiles();
+
     this.remoteStat(filename, function (err, remoteStats) {
+
+      var deletedLocalFilesIndex;
 
       if (!err && remoteStats) {
         // file exists on remote
@@ -418,12 +457,29 @@
           );
         }
         else {
-          // create on local fs
-          self.createLocal(
-            filename,
-            remoteStats,
-            callback
-          );
+          // remote file does not exist in local fs
+          deletedLocalFilesIndex = self.deletedLocalFiles.indexOf(filename);
+
+          if (-1 !== deletedLocalFilesIndex) {
+            // deleted on local fs, also delete on remote 
+            self.remoteUnlink(
+              filename, 
+              function (err) {
+                if (!err) {
+                  delete self.deletedLocalFiles[deletedLocalFilesIndex];
+                }
+                callback(err);
+              }
+            );
+          }
+          else {
+            // create on local fs
+            self.createLocal(
+              filename,
+              remoteStats,
+              callback
+            );
+          }          
         }
       }
       else {
@@ -462,8 +518,9 @@
       path = path + '/';
     }
 
-    existsOnLocal = this.localFs.existsSync(path);
+    this.handleRenamedLocalFiles();
 
+    existsOnLocal = this.localFs.existsSync(path);
 
     function loopRemoteFiles (localList, remoteList, loopRemoteFilesCallback) {
 
@@ -472,19 +529,19 @@
         function (remoteFilename, done) {
 
           var remoteStats = remoteList[remoteFilename],
-            index,
+            deletedLocalFilesIndex,
             filename = self.localFs.normalizePath(path + remoteFilename);
           
           if (!localList[remoteFilename]) {
             // remote file does not exist in local fs
-            index = self.deletedLocalFiles.indexOf(filename);
-            if (-1 !== index) {
+            deletedLocalFilesIndex = self.deletedLocalFiles.indexOf(filename);
+            if (-1 !== deletedLocalFilesIndex) {
               // deleted on local fs, also delete on remote 
               self[remoteStats.isDirectory ? 'remoteRmrf' : 'remoteUnlink'](
                 filename, 
                 function (err) {
                   if (!err) {
-                    delete self.deletedLocalFiles[index];
+                    delete self.deletedLocalFiles[deletedLocalFilesIndex];
                   }
                   done(err);
                 }
@@ -620,7 +677,7 @@
                   }
                 },
                 function (err) {
-                  console.log('dir files done for ' + path);
+                  // console.log('dir files done for ' + path);
                   getRemoteDirStatsListCallback(err, path);
                 }
               );
