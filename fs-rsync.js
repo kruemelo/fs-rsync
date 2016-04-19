@@ -205,9 +205,10 @@
         bufferChunk = data.slice(start, end),
         base64Data = FSRSYNC.arrayBufferToBase64(bufferChunk);
 
-      optionsWriteFile.chunk = chunk;
-
       // console.log('writeFileChunked ', chunk, ' of ' + chunksToSend);
+
+      optionsWriteFile.chunk = chunk;
+      optionsWriteFile.chunks = chunksToSend;
 
       self.connection.send(
         // filename, data, options, callback
