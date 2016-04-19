@@ -28,11 +28,11 @@
     "grunt-contrib-uglify": "^0.10.0",
     "jquery": "^2.1.4",
     "mocha": "^2.4.5",
-    "rpc-fs": "^0.3.7"
+    "rpc-fs": "^0.4.2"
   },
   "dependencies": {
     "fs-rcon": "^5.0.0",
-    "fs-rpc": "^5.0.0",
+    "fs-rpc": "^5.0.1",
     "node-browserfs": "^1.4.8"
   },
   "scripts": {
