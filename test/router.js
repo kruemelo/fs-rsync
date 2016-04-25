@@ -13,9 +13,6 @@ function createTestDir (fsMountPath) {
   fsExtra.copySync(src, fsMountPath);
 }
 
-// file system remote procedure calls module
-var FSRPC = require('fs-rpc');
-var RPC = FSRPC.Server;
 
 // rpc file system module
 var RPCFS = require('rpc-fs');
@@ -23,9 +20,36 @@ var RPCFS = require('rpc-fs');
 // // fs remote connection module
 var FSRCON = require('fs-rcon');
 
-var validatorConfig = require('./validator-config.json');
+var FSRPC = require('fs-rpc');
 
-console.log('validatorConfig', validatorConfig);
+// file system remote procedure calls module
+var rpcServer = FSRPC.Server(
+    require('./validator-config.json'),
+    function rpcRequestHandler (validationError, rpc, req, res, next) {
+      
+      var rcon = req.fsrcon;
+      
+      if (validationError) {
+        next(validationError);
+        return;
+      }
+
+      try {
+        console.log(rpc);
+        rpcServer.execute(RPCFS, rpc, function (err, result) {
+          res.end(FSRCON.encrypt(
+            rpcServer.stringify([err, result]),
+            rcon.serverHashedPassword
+          ));              
+        });      
+      }
+      catch (e) {
+        res.end(rpcServer.stringify([e]));
+      }
+    }
+  );
+
+console.log('validatorConfig', rpcServer.validatorConfig);
 
 var connections = {};
 
@@ -47,6 +71,7 @@ router.use(function(req, res, next) {
   // res.header('x-powered-by', 'someone');
   next();
 });
+
 
 // log some stuff to console
 router.use(function(req, res, next) {
@@ -97,24 +122,17 @@ router.post('/init', function (req, res, next){
     next();
     
   });
-
 });
+
 
 // find existing sessions
 router.use(function (req, res, next) {
 
-  var reqSID = req.body && req.body.SID,
-    rcon = connections[reqSID];
+  var reqSID = req.body && req.body.SID;
 
-  // if (!rcon) {
-  //   res.status(500).end('ECON');
-  //   return;
-  // }
-
-  req.fsrcon = rcon;
+  req.fsrcon = connections[reqSID];
 
   next();
-
 });
 
 
@@ -159,14 +177,13 @@ router.post('/rpc', function (req, res, next) {
     }
     // use an account specific mount path here
     req.mountPath = path.join(req.app.fsMountPath, account.fsMountPath);
-console.log(req.mountPath, req.app.fsMountPath, account.fsMountPath);    
+    console.log(req.mountPath, req.app.fsMountPath, account.fsMountPath);    
   }
   catch (e) {
     error = e;
   }
 
   next(error);
-
 });
 
 
@@ -194,36 +211,8 @@ router.post('/rpc', function (req, res, next) {
 });
 
 
-function rpcRequestHandler (validationError, rpc, req, res, next) {
-  
-  var rcon = req.fsrcon;
-  
-  if (validationError) {
-    next(validationError);
-    return;
-  }
-
-  try {
-console.log(rpc);
-    RPC.execute(RPCFS, rpc, function (err, result) {
-      res.end(FSRCON.encrypt(
-        RPC.stringify([err, result]),
-        rcon.serverHashedPassword
-      ));              
-    });      
-  }
-  catch (e) {
-    res.end(RPC.stringify([e]));
-  }
-
-}
-
-
 // apply rpc
-router.use(RPC(
-  validatorConfig, 
-  rpcRequestHandler
-));
+router.use(rpcServer);
 
 
 router.use(function(err, req, res, next) {
