@@ -405,6 +405,23 @@ describe('fs-rsync', function () {
       });
     });
 
+
+    it('should handle unsynced files that exists on local and remote', function (done) {
+      
+      var filename = '/dirA/fileA';
+
+      initialize(function () {
+        // create on local before sync
+        browserFs.mkdirpSync('/dirA');
+        browserFs.writeFileSync(filename, 'file ' + filename + ' content');
+        rsync.syncFile(filename, function (err) {
+          assert.instanceOf(err, Error, 'should have an error');
+          assert.strictEqual(err.message, 'ECONFLICT', 'conflict error message');
+          done();
+        });
+      });
+    });
+
   }); // describe synchronizing file systems
 
 }); // describe fs-rsync

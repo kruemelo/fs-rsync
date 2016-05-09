@@ -754,7 +754,7 @@
     localFileNode = self.localFs.getNode(filename);
 
     remoteFileHasChanged = localFileNode.remoteStats ? 
-      localFileNode.remoteStats.mtime !== remoteStats.mtime : false;
+      localFileNode.remoteStats.mtime !== remoteStats.mtime : true;
     
     localFileHasChanged = localFileNode.remoteStats ?
       localFileNode.mtime !== localFileNode.remoteStats.mtime : true;
