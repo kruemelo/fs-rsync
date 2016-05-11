@@ -926,19 +926,7 @@
         if (err) {
           self.remoteMkdirp( 
             pathname,
-            function (err, remoteStats) {
-
-              var localFileNode;        
-              
-              if (!err) { 
-                localFileNode = fs.getNode(pathname);
-                localFileNode.remoteStats = remoteStats;
-                localFileNode.remoteStats.fetched = Date.now();
-                localFileNode.mtime = remoteStats.mtime;              
-              }
-
-              callback(err);
-            }
+            callback
           );
         }
         else {
