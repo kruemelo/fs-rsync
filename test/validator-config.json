@@ -9,6 +9,10 @@
     {"dataTypes": ["string"], "isPath": true},
     {"dataTypes": ["undefined", "number"]}
   ],
+  "mkdirp": [
+    {"dataTypes": ["string"], "isPath": true},
+    {"dataTypes": ["undefined", "number"]}
+  ],
   "readdir": [
     {"dataTypes": ["string"], "isPath": true}
   ],

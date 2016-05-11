@@ -138,10 +138,10 @@
   };
 
   // list remote dir content and stats
-  FSRSYNC.prototype.remoteList = function (path, callback) {
+  FSRSYNC.prototype.remoteList = function (pathname, callback) {
 
     this.connection.send(
-      RPC.stringify('readdirStat', path), 
+      RPC.stringify('readdirStat', pathname), 
       this.getUrlPathname(),
       function (err, result) {     
         if (err) { return callback(err); }
@@ -164,18 +164,35 @@
   };  // FSRSYNC.remoteStat
 
 
-  FSRSYNC.prototype.remoteMkdir = function (path, callback) {
+  FSRSYNC.prototype.remoteMkdir = function (pathname, callback) {
     var self = this;
     this.connection.send(
       // filename, data, options, callback
-      RPC.stringify('mkdir', [path]), 
+      RPC.stringify('mkdir', [pathname]), 
       this.getUrlPathname(),
       function (err) {
         if (err) {
           return callback(err);  
         }
         // return remote stats with callback
-        self.remoteStat(path, callback);
+        self.remoteStat(pathname, callback);
+      }
+    );    
+  };  // FSRSYNC.remoteMkdir
+
+
+  FSRSYNC.prototype.remoteMkdirp = function (pathname, callback) {
+    var self = this;
+    this.connection.send(
+      // filename, data, options, callback
+      RPC.stringify('mkdirp', [pathname]), 
+      this.getUrlPathname(),
+      function (err) {
+        if (err) {
+          return callback(err);  
+        }
+        // return remote stats with callback
+        self.remoteStat(pathname, callback);
       }
     );    
   };  // FSRSYNC.remoteMkdir
@@ -319,22 +336,22 @@
   }; // remoteUnlink
 
 
-  FSRSYNC.prototype.remoteRmrf =  function (path, callback) {
+  FSRSYNC.prototype.remoteRmrf =  function (pathname, callback) {
     this.connection.send(
-      RPC.stringify('rmrf', path), 
+      RPC.stringify('rmrf', pathname), 
       this.getUrlPathname(),
       callback
     );  
   }; // remoteRmrf
 
 
-  FSRSYNC.prototype.localList = function (path) {
+  FSRSYNC.prototype.localList = function (pathname) {
     
     var self = this,
       result = {};
     
-    this.localFs.readdirSync(path).forEach(function (filename) {
-      result[filename] = self.localFs.statSync(path + '/' + filename);
+    this.localFs.readdirSync(pathname).forEach(function (filename) {
+      result[filename] = self.localFs.statSync(pathname + '/' + filename);
     });
 
     return result;
@@ -502,7 +519,7 @@
   };  // syncFile
 
   
-  FSRSYNC.prototype.syncDir = function (path, options, callback) {
+  FSRSYNC.prototype.syncDir = function (pathname, options, callback) {
       
     var self = this,
       recursive,
@@ -515,13 +532,13 @@
 
     recursive = !!options.recursive;
 
-    if ('/' !== path[path.length - 1]) {
-      path = path + '/';
+    if ('/' !== pathname[pathname.length - 1]) {
+      pathname = pathname + '/';
     }
 
     this.handleRenamedLocalFiles();
 
-    existsOnLocal = this.localFs.existsSync(path);
+    existsOnLocal = this.localFs.existsSync(pathname);
 
     function loopRemoteFiles (localList, remoteList, loopRemoteFilesCallback) {
 
@@ -531,7 +548,7 @@
 
           var remoteStats = remoteList[remoteFilename],
             deletedLocalFilesIndex,
-            filename = self.localFs.normalizePath(path + remoteFilename);
+            filename = self.localFs.normalizePath(pathname + remoteFilename);
           
           if (!localList[remoteFilename]) {
             // remote file does not exist in local fs
@@ -569,7 +586,7 @@
         function (localFilename, done) {
 
           var localStats = localList[localFilename],
-            localNode = self.localFs.getNode(path + localFilename);
+            localNode = self.localFs.getNode(pathname + localFilename);
           
           if (!remoteList[localFilename]) {
             // local file is not on remote
@@ -577,16 +594,16 @@
             if (localNode.remoteStats) {
               // file deleted on remote fs 
               if (localStats.isDirectory()) {
-                self.localFs.rmdir(path + localFilename, done);
+                self.localFs.rmdir(pathname + localFilename, done);
               }
               else {
-                self.localFs.unlink(path + localFilename, done);
+                self.localFs.unlink(pathname + localFilename, done);
               }
             }
             else {
               // new file created on local fs 
               self.createRemote(
-                path + localFilename,
+                pathname + localFilename,
                 localStats, 
                 done
               );
@@ -611,7 +628,7 @@
 
           var localStats = localList[remoteFilename],
             remoteStats = remoteList[remoteFilename],
-            filename = path + remoteFilename;
+            filename = pathname + remoteFilename;
           
           if (!localStats || !remoteStats) {
             return done();
@@ -636,7 +653,7 @@
 
     function handleRemoteList (remoteList, handleRemoteListDone) {
       
-      var localList = self.localList(path);
+      var localList = self.localList(pathname);
 
       // loop remote files
       loopRemoteFiles(localList, remoteList, function (err) {
@@ -653,38 +670,38 @@
 
     function getRemoteDirStatsList (getRemoteDirStatsListCallback) {
     
-      self.remoteList(path, function (err, remoteList) {
+      self.remoteList(pathname, function (err, remoteList) {
         if (err) { return getRemoteDirStatsListCallback(err); }
         handleRemoteList(remoteList, function (err) {
           var dirFiles, localDirNode;
           if (err) {
-            getRemoteDirStatsListCallback(err, path);
+            getRemoteDirStatsListCallback(err, pathname);
           }
           else {
-            localDirNode = self.localFs.getNode(path);
+            localDirNode = self.localFs.getNode(pathname);
             localDirNode.remoteStats.fetched = Date.now();
             if (recursive) {
               // sync recursively
-              dirFiles = self.localList(path);
+              dirFiles = self.localList(pathname);
               FSRSYNC.eachAsync(
                 Object.keys(dirFiles),
                 function (filename, dirfileDone) {
                   var stats = dirFiles[filename];
                   if (stats && stats.isDirectory()) {
-                    self.syncDir(path + filename, {recursive: true}, dirfileDone);
+                    self.syncDir(pathname + filename, {recursive: true}, dirfileDone);
                   }
                   else {
                     dirfileDone();
                   }
                 },
                 function (err) {
-                  // console.log('dir files done for ' + path);
-                  getRemoteDirStatsListCallback(err, path);
+                  // console.log('dir files done for ' + pathname);
+                  getRemoteDirStatsListCallback(err, pathname);
                 }
               );
             }
             else {
-              getRemoteDirStatsListCallback(null, path);
+              getRemoteDirStatsListCallback(null, pathname);
             }
           }
         });
@@ -692,7 +709,7 @@
     } // get remote dir stats list
 
 
-    this.remoteStat(path, function (err, remoteStats) {
+    this.remoteStat(pathname, function (err, remoteStats) {
 
       var localDirNode;
 
@@ -700,14 +717,14 @@
         // dir exists on remote
         if (existsOnLocal) {
           // exists both on local and remote fs
-          localDirNode = self.localFs.getNode(path);
+          localDirNode = self.localFs.getNode(pathname);
           localDirNode.remoteStats = remoteStats;
           getRemoteDirStatsList(callback);
         }
         else {
           // create on local fs
           self.createLocal(
-            path,
+            pathname,
             remoteStats,
             function (err) {
               if (err) {
@@ -723,13 +740,13 @@
         if (existsOnLocal) {
           // create on remote
           self.createRemote(
-            path,
-            self.localFs.statSync(path),
+            pathname,
+            self.localFs.statSync(pathname),
             function (err) {
               if (err) {
                 return callback(err);
               }
-              self.syncDir(path, options, callback);
+              self.syncDir(pathname, options, callback);
             }
           );
         }
@@ -739,7 +756,6 @@
         }
       }
     });
-
   };  // FSRSYNC.syncDir
 
 
@@ -832,51 +848,105 @@
   };  // createRemote
 
 
-  FSRSYNC.prototype.createRemoteDir = function (path, callback) {
+  FSRSYNC.prototype.createRemoteDir = function (pathname, callback) {
 
-    var self = this;
+    var self = this,
+      fs = self.localFs;
 
-    this.remoteMkdir( 
-      path,
-      function (err, remoteStats) {
+    this.ensureRemotePath(fs.dirname(pathname), function (err) {
 
-        var localFileNode;        
-        
-        if (err) { return callback(err); }
-
-        localFileNode = self.localFs.getNode(path);
-        localFileNode.remoteStats = remoteStats;
-        localFileNode.remoteStats.fetched = Date.now();
-        localFileNode.mtime = remoteStats.mtime;
-
-        callback(null);
+      if (err) {
+        callback(err);
       }
-    );
+      else {      
+        self.remoteMkdir( 
+          pathname,
+          function (err, remoteStats) {
+
+            var localFileNode;        
+            
+            if (err) { return callback(err); }
+
+            localFileNode = fs.getNode(pathname);
+            localFileNode.remoteStats = remoteStats;
+            localFileNode.remoteStats.fetched = Date.now();
+            localFileNode.mtime = remoteStats.mtime;
+
+            callback(null);
+          }
+        );
+      }
+    });
   };  // createRemoteDir
 
 
   FSRSYNC.prototype.createRemoteFile = function (filename, localContent, callback) {
 
-    var self = this;
+    var self = this,
+      fs = self.localFs;
 
-    this.remoteWriteFile(
-      filename, 
-      localContent,
-      function (err, remoteStats) {
-
-        var localFileNode;        
-        
-        if (err) { return callback(err); }
-
-        localFileNode = self.localFs.getNode(filename);
-        localFileNode.remoteStats = remoteStats;
-        localFileNode.remoteStats.fetched = Date.now();
-        localFileNode.mtime = remoteStats.mtime;
-
-        callback(null);
+    this.ensureRemotePath(fs.dirname(filename), function (err) {
+      
+      if (err) {
+        callback(err);
       }
-    );
+      else {    
+        self.remoteWriteFile(
+          filename, 
+          localContent,
+          function (err, remoteStats) {
+
+            var localFileNode;        
+            
+            if (err) { return callback(err); }
+
+            localFileNode = self.localFs.getNode(filename);
+            localFileNode.remoteStats = remoteStats;
+            localFileNode.remoteStats.fetched = Date.now();
+            localFileNode.mtime = remoteStats.mtime;
+
+            callback(null);
+          }
+        );
+        }
+      });
   };  // createLocalFile
+
+
+  FSRSYNC.prototype.ensureRemotePath = function (pathname, callback) {
+
+    var self = this,
+      fs = self.localFs;
+
+    if ('/' === pathname) {
+      callback();
+    }
+    else {
+      this.remoteStat(pathname, function (err) {
+        if (err) {
+          self.remoteMkdirp( 
+            pathname,
+            function (err, remoteStats) {
+
+              var localFileNode;        
+              
+              if (!err) { 
+                localFileNode = fs.getNode(pathname);
+                localFileNode.remoteStats = remoteStats;
+                localFileNode.remoteStats.fetched = Date.now();
+                localFileNode.mtime = remoteStats.mtime;              
+              }
+
+              callback(err);
+            }
+          );
+        }
+        else {
+          callback();
+        }
+      });
+    }
+  };  // ensureRemotePath
 
 
   FSRSYNC.prototype.createLocal = function (filename, remoteStats, callback) {
@@ -913,21 +983,21 @@
   };  // createLocal
 
 
-  FSRSYNC.prototype.ensureLocalPath = function (path) {
+  FSRSYNC.prototype.ensureLocalPath = function (pathname) {
     var localFs = this.localFs;
-    if (!localFs.existsSync(path)) {
-      localFs.mkdirpSync(path);
+    if (!localFs.existsSync(pathname)) {
+      localFs.mkdirpSync(pathname);
     }
-  };
+  };  // ensureLocalPath
 
 
-  FSRSYNC.prototype.createLocalDir = function (path, remoteStats, callback ) {
+  FSRSYNC.prototype.createLocalDir = function (pathname, remoteStats, callback ) {
     
     var self = this;
 
-    this.ensureLocalPath(this.localFs.dirname(path));
+    this.ensureLocalPath(this.localFs.dirname(pathname));
 
-    this.localFs.mkdir(path, function (err) {
+    this.localFs.mkdir(pathname, function (err) {
       
       var time = Date.now(),
         parentDirNode,
@@ -935,7 +1005,7 @@
 
       if (err) { return callback(err); }
 
-      localDirNode = self.localFs.getNode(path);
+      localDirNode = self.localFs.getNode(pathname);
       localDirNode.remoteStats = remoteStats;
       localDirNode.remoteStats.fetched = false;
 
@@ -944,7 +1014,7 @@
       localDirNode.mtime = remoteStats.mtime;
       localDirNode.atime = remoteStats.atime;
 
-      parentDirNode = self.localFs.getNode(self.localFs.dirname(path));
+      parentDirNode = self.localFs.getNode(self.localFs.dirname(pathname));
 
       parentDirNode.atime = time;
       parentDirNode.mtime = time;

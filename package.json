@@ -1,6 +1,6 @@
 {
   "name": "fs-rsync",
-  "version": "1.6.4",
+  "version": "1.6.5",
   "description": "sync local node-browserfs with remote fs",
   "main": "fs-rsync.js",
   "keywords": [
@@ -19,7 +19,7 @@
     "node": ">=5.3.0"
   },
   "devDependencies": {
-    "body-parser": "^1.14.1",
+    "body-parser": "^1.15.1",
     "chai": "^3.4.1",
     "express": "^4.13.3",
     "fs-extra": "^0.26.2",
@@ -28,12 +28,12 @@
     "grunt-contrib-uglify": "^0.10.0",
     "jquery": "^2.1.4",
     "mocha": "^2.4.5",
-    "rpc-fs": "^0.4.2"
+    "rpc-fs": "^0.5.0"
   },
   "dependencies": {
     "fs-rcon": "^5.0.0",
-    "fs-rpc": "^6.0.0",
-    "node-browserfs": "^1.4.8"
+    "fs-rpc": "^6.0.2",
+    "node-browserfs": "^1.4.9"
   },
   "scripts": {
     "test": "node ./test/server.js"

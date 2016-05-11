@@ -422,6 +422,40 @@ describe('fs-rsync', function () {
       });
     });
 
+    it('should ensure remote path when creating file on remote', function (done) {
+
+      var now = + Date.now(),
+        filenames = [
+        '/newRootFile' + now,
+        '/dirA/newFileOnExistingPath' + now,
+        '/not' + now + '/existing' + now + '/Path' + now + '/newFile' + now,
+      ];
+
+      initialize(function () {
+
+        FSRSYNC.eachAsync(
+          filenames,
+          function (filename, filenameDone) {
+            // create on local 
+            var dirname = browserFs.dirname(filename);
+            if ('/' !== dirname) {
+              browserFs.mkdirpSync(dirname);
+            }
+            browserFs.writeFileSync(filename, 'file ' + filename + ' content');
+            // remote sync
+            rsync.syncFile(filename, function (err) {
+              filenameDone(err);
+            });
+          },
+          function (err) {
+            assert(!err, 'should not have an error');
+            done();            
+          }
+        );
+      });
+
+    });
+
   }); // describe synchronizing file systems
 
 }); // describe fs-rsync
