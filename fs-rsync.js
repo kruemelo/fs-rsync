@@ -915,8 +915,7 @@
 
   FSRSYNC.prototype.ensureRemotePath = function (pathname, callback) {
 
-    var self = this,
-      fs = self.localFs;
+    var self = this;
 
     if ('/' === pathname) {
       callback();
