@@ -91,7 +91,7 @@ rsync.syncFile('/file0', function (err) {
             console.error(err);
           }
         );
-      });
+      };
     
     });
 

@@ -170,10 +170,21 @@
       // filename, data, options, callback
       RPC.stringify('mkdir', [pathname]), 
       this.getUrlPathname(),
-      function (err) {
+      function (err, result) {
+
+        var parsed;
+
         if (err) {
           return callback(err);  
         }
+
+        parsed = RPC.parse(result);
+
+        if (parsed[0] instanceof Error) {
+          callback.apply(null, parsed);
+          return;
+        }
+
         // return remote stats with callback
         self.remoteStat(pathname, callback);
       }
@@ -187,10 +198,21 @@
       // filename, data, options, callback
       RPC.stringify('mkdirp', [pathname]), 
       this.getUrlPathname(),
-      function (err) {
+      function (err, result) {
+        
+        var parsed;
+
         if (err) {
           return callback(err);  
         }
+
+        parsed = RPC.parse(result);
+
+        if (parsed[0] instanceof Error) {
+          callback.apply(null, parsed);
+          return;
+        }
+
         // return remote stats with callback
         self.remoteStat(pathname, callback);
       }
@@ -228,14 +250,28 @@
       optionsWriteFile.chunks = chunksToSend;
 
       self.connection.send(
+        
         // filename, data, options, callback
         RPC.stringify('writeFileChunked', [filename, base64Data, optionsWriteFile]), 
+        
         self.getUrlPathname(),
-        function (err) {
+        
+        function (err, result) {
+
+          var parsed;
+          
           if (err) {
-            callback(err);            
+            return callback(err);            
           }
-          else if (chunk >= chunksToSend) {
+
+          parsed = RPC.parse(result);
+
+          if (parsed[0] instanceof Error) {
+            callback.apply(null, parsed);
+            return;
+          }
+
+          if (chunk >= chunksToSend) {
             // return remote stats with callback
             self.remoteStat(filename, callback);            
           }
@@ -331,7 +367,10 @@
     this.connection.send(
       RPC.stringify('unlink', filename), 
       this.getUrlPathname(),
-      callback
+      function (err, result) {
+        if (err) { return callback(err); }
+        callback.apply(null, RPC.parse(result));
+      }
     );    
   }; // remoteUnlink
 
@@ -340,7 +379,10 @@
     this.connection.send(
       RPC.stringify('rmrf', pathname), 
       this.getUrlPathname(),
-      callback
+      function (err, result) {
+        if (err) { return callback(err); }
+        callback.apply(null, RPC.parse(result));
+      }
     );  
   }; // remoteRmrf
 
