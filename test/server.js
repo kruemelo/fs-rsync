@@ -7,7 +7,7 @@ var bodyParser = require('body-parser');
 var path = require('path');
 var os = require('os');
 
-app.fsMountPath = path.join(os.tmpDir(), 'fs-rsync-test');
+app.fsMountPath = path.join(os.tmpdir(), 'fs-rsync-test');
 
 // place it before app.use(app.router); for it to work
 // app.disable('x-powered-by');
